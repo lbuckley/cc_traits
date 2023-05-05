@@ -1,0 +1,350 @@
+---
+title: "CCtraits"
+author: "TrEnCh project"
+date: "5/5/2023"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Github code
+https://github.com/HuckleyLab/cc_traits
+
+```{r}
+library(reticulate)
+
+#environment location: /Users/laurenbuckley/anaconda3/envs/r_and_phython
+```
+```{python}
+use_condaenv("r_and_phython")
+```
+
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+from sklearn.preprocessing import StandardScaler, scale
+from sklearn.linear_model import LinearRegression, Lasso, LassoCV, Ridge, RidgeCV
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.model_selection import GridSearchCV, train_test_split, LeaveOneOut, KFold
+from sklearn.metrics import mean_squared_error
+from sklearn.svm import SVR
+from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import scale
+from scipy.stats import ttest_rel
+from datetime import datetime
+
+from numpy import logspace, random, isnan
+import pickle
+from scipy.stats import rankdata
+from os.path import basename, join
+from os import mkdir 
+
+from json import dumps 
+
+import shap
+from copy import deepcopy
+
+from sklearn.ensemble import RandomForestRegressor
+import TraitData
+from imp import reload
+import seaborn as sns
+
+## Set Parameters for Analysis 
+
+# Plotting
+sns.set()
+sns.set(font_scale=1.5)
+%matplotlib inline
+plt.rcParams['figure.figsize'] = (7,15)
+%config InlineBackend.figure_format = 'retina'
+
+# 10-Fold Cross Validator
+cv = KFold(n_splits=10)
+
+# Load saved Random State to ensure replicablility.
+try:
+    SAVED_STATE = pickle.load(open("np.random.state", 'rb'))
+    np.random.set_state(SAVED_STATE)
+except Exception as e:
+    SAVED_STATE = False
+
+```
+
+```{r, echo=FALSE}
+library(plyr)
+library(dplyr)
+library(reshape2)
+library(tidyr)
+library(ggplot2)
+library(sjPlot)
+library(car)
+library(patchwork)
+library(ggcorrplot)
+library(tidymodels)
+
+```
+
+```{r}
+#----
+#read data
+
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/data")
+
+mammals= read.csv("mammals01.csv")
+plants= read.csv("plants5.csv")
+fish= read.csv("west-coast-triennial _species_generaltraits.csv")
+eplants= read.csv("rumpf_ShiftsTraitsBuckley_20180418.csv")
+
+#----
+#Process data
+
+#mammals
+# Mammals: alt timit, longevity
+
+#update traits to correspond to Angert et al.
+mammals$DietBreadth=0
+mammals$DietBreadth[mammals$Food=="omni"]=1
+mammals$AnnualRhythm=0
+mammals$AnnualRhythm[mammals$Annual_rhythm=="fachib"]=1
+mammals$DailyRhythm=0
+mammals$DailyRhythm[mammals$Daily_rhythm=="both"]=1
+
+#restrict traits
+mammals=mammals[,c("Taxon","High_change","Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DietBreadth","DailyRhythm","AnnualRhythm")]
+
+#check correlations
+r <- cor(mammals[,c(3:10)], use="complete.obs")
+ggcorrplot(r)
+
+#to long
+mammals.l<- mammals %>%
+  gather("trait", "value", 3:ncol(mammals))
+
+## Facet labels
+trait.labs <- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","Range size (km2)","Mass (g)","Daily rhythm","Annual rhythm","Diet breadth")
+names(trait.labs) <- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DailyRhythm","AnnualRhythm","DietBreadth")
+
+#plot
+plot.m= ggplot(mammals.l) + aes(x=value, y = High_change)+geom_point()+
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) + 
+  ggtitle('Mammals')+
+  theme_bw()+ylab("Elevation shift (m)") #+stat_smooth(method='lm', formula= y~poly(x,2))
+#+geom_smooth(se=FALSE) #+scale_x_log10()
+
+#scale
+mammals$Orig_high_limit= scale(mammals$Orig_high_limit)
+mammals$Rangesize_km2= scale(mammals$Rangesize_km2)
+mammals$Mass_g= scale(mammals$Mass_g)
+#mammals$Young_per_yr= scale(mammals$Young_per_yr)
+
+#mod
+# mod1= lm(High_change~Orig_high_limit+Longevity_yrs+Bio1_std+Litters_per_yr+Young_per_yr+Rangesize_km2+Mass_g+Daily_rhythm_code+Annual_rhythm_code, data=mammals)
+# #mod1= lm(High_change~poly(Orig_high_limit)+poly(Longevity_yrs)+poly(Bio1_std)+poly(Litters_per_yr)+poly(Young_per_yr)+poly(Rangesize_km2)+poly(Mass_g)+poly(Daily_rhythm_code)+poly(Annual_rhythm_code), data=mammals)
+# mod1= lm(High_change~poly(Orig_high_limit)*poly(Longevity_yrs), data=mammals)
+# 
+# #plot model
+# plot_model(mod1, type="pred", terms=c("Orig_high_limit"), show.data=TRUE)
+```
+
+```{R}
+#----
+#alpine plants
+
+#update traits to correspond to Angert et al.
+plants$DispersalMode=NA
+plants$DispersalMode[plants$dispersal_mode=="gravity"]=0
+plants$DispersalMode[plants$dispersal_mode=="wind" | plants$dispersal_mode=="animal" | plants$dispersal_mode=="water" ]=1
+
+#restrict traits
+plants=plants[,c("Taxon","migration_m","earliest_seed_shed_mo","seed_shed_dur_mos",
+                 "nichebreadth_num_flor_zones", "BreedSysCode",
+                 "Ave_seed_shed_ht_m","flwr_dur_mos","DispersalMode",
+                 "diaspore_mass_mg","nichebreadth_amplit_ocean","Nbound_lat_GBIF_nosyn")]
+
+#check correlations
+#r <- cor(plants[,c(3:12)], use="complete.obs")
+#ggcorrplot(r)
+
+#to long
+plants.l<- plants %>%
+  gather("trait", "value", 3:ncol(plants))
+plants.l$value= as.numeric(plants.l$value)
+
+## Facet labels
+trait.labs <- c("Earliest seed shed (mo)","Seed shed duration (mo)","Number floristic zones", "Breeding System Code",
+                "Seed shed height (m)","Flower duration (mo)","Dispersal mode",
+                "Diaspore mass (mg)","Number oceanic zones","Northern Latitude (degrees)")
+names(trait.labs) <- c("earliest_seed_shed_mo","seed_shed_dur_mos",
+                       "nichebreadth_num_flor_zones", "BreedSysCode",
+                       "Ave_seed_shed_ht_m","flwr_dur_mos","DispersalMode",
+                       "diaspore_mass_mg","nichebreadth_amplit_ocean","Nbound_lat_GBIF_nosyn")
+
+#plot  
+plot.ap= ggplot(plants.l) + aes(x=value, y = migration_m)+geom_point()+
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Alpine plants') +
+  theme_bw()+ylab("Elevation shift (m)") #+ stat_smooth(method='lm', formula= y~poly(x,2))
+#+scale_x_log10()
+
+#mod
+#scale
+#plants$diaspore_ave_len_mm= scale(plants$diaspore_ave_len_mm)
+#plants$diaspore_min_len_mm = scale(plants$diaspore_min_len_mm)
+plants$diaspore_mass_mg = scale(plants$diaspore_mass_mg)
+#plants$MaxAlt = scale(plants$MaxAlt)
+#plants$seed_mass_mg = scale(plants$seed_mass_mg)
+
+# mod1= lm(migration_m~earliest_seed_shed_mo+latest_seed_shed_mo+seed_shed_dur_mos+nichebreadth_num_flor_zones+             
+#            diaspore_min_len_mm+BreedSysCode+diaspore_ave_len_mm+MaxAlt+seed_mass_mg+oceanity+Min_seed_shed_ht_m+
+#            flwr_mo_end+dispmode01+flwr_mo_start+diaspore_mass_mg+nichebreadth_amplit_ocean+  
+#            StorageOrgan+Max_seed_shed_ht_m, data=plants)
+# 
+# #plot model
+# plot_model(mod1, type="pred", terms=c("seed_mass_mg"), show.data=TRUE)
+# plot_model(mod1, type="pred", terms=c("diaspore_mass_mg"), show.data=TRUE)
+```
+
+```{R}
+#----
+#fish
+
+#Make salt / fresh variable
+fish$WaterType=0
+fish$WaterType[fish$Brack== -1]=1
+fish$WaterType[fish$Fresh== -1]=2
+
+#compress habitats
+#finalize how to code
+fish$habitat= as.numeric(factor(fish$DemersPelag, 
+                                levels=c("bathydemersal","demersal","benthopelagic","pelagic-oceanic","pelagic-neritic","reef-associated")))
+
+#restrict traits
+fish=fish[,c("Species","Latitudinal.Difference","habitat","DepthRangeDeep","Length","WaterType","Vulnerability")]
+#include vulnerability
+
+#to long
+fish.l<- fish %>%
+  gather("trait", "value", 3:ncol(fish))
+
+# Facet labels
+trait.labs <- c("Habitat","Depth Range (?)","Length (?)","Vulnerability","Water Type")
+names(trait.labs) <- c("habitat","DepthRangeDeep","Length","Vulnerability","WaterType")
+
+#plot
+plot.tms= ggplot(fish.l) + aes(x=value, y = Latitudinal.Difference)+geom_point()+
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Triennial marine survey') +
+  theme_bw()+ylab("Latitudinal shift (°)") #+stat_smooth(method='lm', formula= y~poly(x,2))
+```
+
+```{R}
+#----
+#European plants
+
+#to numeric
+#Check codes: (1) C-competitors, (2) S-stress tolerators, and (3) R-ruderals.
+ls.codes=c("ccc","ccs","css","crs","sss","rss","rrs") 
+eplants$LifeStrategy= match(eplants$LifeStrategy, ls.codes)
+
+#restrict traits
+#eplants=eplants[,c("speciesname","LeadingEdge","TemperatureIndicator","NutrientIndicator","Dispersal","Persistence")]
+eplants=eplants[,c("speciesname","LeadingEdge","TemperatureIndicator","NutrientIndicator","RetInFurSheep","GutSurvival","SeedReleaseHeight","LifeStrategy","LifeSpan","NoOfVegOffspings","Dispersal","Persistence")]
+#Look into adding Historic position, Historical optimum
+
+#check correlations
+#r <- cor(eplants[,c(3:12)], use="complete.obs")
+#ggcorrplot(r)
+
+#to long
+eplants.l<- eplants %>%
+  gather("trait", "value", 3:ncol(eplants))
+
+# Facet labels
+trait.labs <- c("Temperature Indicator","Nutrient Indicator","Sheep Fur Retention","Gut Survival","Seed Release Height","Life Strategy","LifeSpan","N Veg Offsping","Dispersal","Persistence")
+names(trait.labs) <- c("TemperatureIndicator","NutrientIndicator","RetInFurSheep","GutSurvival","SeedReleaseHeight","LifeStrategy","LifeSpan","NoOfVegOffspings","Dispersal","Persistence")
+
+#plot
+plot.ep= ggplot(eplants.l) + aes(x=value, y = LeadingEdge)+geom_point()+
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('European plants') +
+  theme_bw()+ylab("Elevational shift (m)") #+stat_smooth(method='lm', formula= y~poly(x,2))
+#check LeadingEdge, Optimum, RearEdge
+
+# mod1= lm(LeadingEdge~RelativeAbundance+TemperatureIndicator+NutrientIndicator+TerminalVelocity+
+#            RetInFurCattle+RetInFurSheep+GutSurvival+SeedReleaseHeight+Dispersal+
+#            LifeStrategy+LifeSpan+Dominance+NoOfVegOffspings+Persistence, data=eplants)
+# 
+# Anova(mod1, type=3)
+```
+
+#Models
+# OLS: linear relationships and no variable interaction
+# Ridge: “ridge”-regularized linear model
+# KernalRidge 
+# SVR: support vector machine (SVM).
+# RF: Random forest
+
+# OLS-P: add polynomials
+# Ridge-P: add polynomials
+
+
+## OLS 
+
+```{phython}
+a = "Hello" + " World"
+print(a)
+
+```
+
+```{phython}
+import pandas
+
+    ols = LinearRegression(fit_intercept=False, normalize=False)
+    ols.fit(td.X[train], td.Y[train])
+    preds = ols.predict(td.X[test])
+    error = mean_squared_error(td.Y[test], preds)
+    ols_mses.append(error)
+    ols_coefs.append(ols.coef_)
+    
+mean_error = np.mean(ols_mses)
+std_error = np.std(ols_mses)
+mean_coefs = np.mean(ols_coefs, axis=0)
+std_coefs = np.std(ols_coefs, axis=0)
+
+plot_importance(mean_coefs,
+                td.feature_names, "OLS",
+                save="{}_ols-ranks.png".format(join(results_dir, dsname)))#, std=std_coefs)
+MSEs.append(("OLS", ols_mses))
+COEFs.append(("OLS", mean_coefs))
+rankings.append(['OLS'] + list(compute_ranks(mean_coefs)))
+
+```
+
+
+```{phython}
+import pandas
+
+ols_coefs = []
+ols_mses = []
+for train, test in cv.split(td.X, td.Y):
+    ols = LinearRegression(fit_intercept=False, normalize=False)
+    ols.fit(td.X[train], td.Y[train])
+    preds = ols.predict(td.X[test])
+    error = mean_squared_error(td.Y[test], preds)
+    ols_mses.append(error)
+    ols_coefs.append(ols.coef_)
+    
+mean_error = np.mean(ols_mses)
+std_error = np.std(ols_mses)
+mean_coefs = np.mean(ols_coefs, axis=0)
+std_coefs = np.std(ols_coefs, axis=0)
+
+plot_importance(mean_coefs,
+                td.feature_names, "OLS",
+                save="{}_ols-ranks.png".format(join(results_dir, dsname)))#, std=std_coefs)
+MSEs.append(("OLS", ols_mses))
+COEFs.append(("OLS", mean_coefs))
+rankings.append(['OLS'] + list(compute_ranks(mean_coefs)))
+
+```
