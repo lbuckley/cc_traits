@@ -244,7 +244,7 @@ plot.bird= ggplot(bird.l) + aes(x=value, y = D_border_0.9)+geom_point()+
   facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Birds') +
   theme_bw()+ylab(" shift (X)") 
 
-#----
+#===================================
 #Models
 # OLS: linear relationships and no variable interaction
 # Ridge: “ridge”-regularized linear model
@@ -261,12 +261,14 @@ plot.bird= ggplot(bird.l) + aes(x=value, y = D_border_0.9)+geom_point()+
 # install.packages(c('tidyverse', 'tidymodels', 'ranger', 'vip', 'palmerpenguins', 'skimr', 'paletteer', 'nnet', 'here'))
 library(tidymodels)
 
-# k-fold cross-validation scheme (Hastie et al. 2009, Section 7.10) combined with a mean squared error metric
+# eval: k-fold cross-validation scheme (Hastie et al. 2009, Section 7.10) combined with a mean squared error metric
 # https://rsample.tidymodels.org/reference/vfold_cv.html
 
 #set up data
 dat=na.omit(plants)
 dat$y= dat$migration_m
+#drop ID rows
+dat<- dat[,3:ncol(dat)]
 
 preds <-  c("earliest_seed_shed_mo","seed_shed_dur_mos","nichebreadth_num_flor_zones","BreedSysCode","Ave_seed_shed_ht_m",
             "flwr_dur_mos","DispersalMode","diaspore_mass_mg","nichebreadth_amplit_ocean","Nbound_lat_GBIF_nosyn")
@@ -286,47 +288,39 @@ dat$diaspore_mass_mg = scale(dat$diaspore_mass_mg)
 
 #-----
 #OLS
+lm_spec <- linear_reg() %>%
+  set_engine(engine = "lm")
 
+lm_fit <- lm_spec %>%
+  fit(y ~ .,
+      data = train
+  )
 
-lr = lm(migration_m~earliest_seed_shed_mo+seed_shed_dur_mos+nichebreadth_num_flor_zones+BreedSysCode+
-Ave_seed_shed_ht_m+flwr_dur_mos+DispersalMode+diaspore_mass_mg+nichebreadth_amplit_ocean, data = train)
-  
-#Step 1 - create the evaluation metrics function
-
-eval_metrics = function(model, df, predictions, target){
-  resids = df[,target] - predictions
-  resids2 = resids**2
-  N = length(predictions)
-  r2 = as.character(round(summary(model)$r.squared, 2))
-  adj_r2 = as.character(round(summary(model)$adj.r.squared, 2))
-  print(adj_r2) #Adjusted R-squared
-  print(as.character(round(sqrt(sum(resids2)/N), 2))) #RMSE
-}
-
-# Step 2 - predicting and evaluating the model on train data
-predictions = predict(lr, newdata = train)
-eval_metrics(lr, train, predictions, target = 'migration_m')
-
-# Step 3 - predicting and evaluating the model on test data
-predictions = predict(lr, newdata = test)
-eval_metrics(lr, test, predictions, target = 'migration_m')
+lm_wf <- 
+  workflow() %>%
+  add_model(lm_spec) %>%
+  add_formula(y ~ .)
 
 #----
 # Ridge: “ridge”-regularized linear model
 #https://www.tidymodels.org/learn/models/parsnip-ranger-glmnet/
 #use scaled data
 
-glmn_fit <- 
-  linear_reg(penalty = 0.001, mixture = 0.5) %>% 
-  set_engine("glmnet") %>%
-  fit(y ~ ., data = train)
+glmn_spec <- linear_reg(penalty = 0.001, mixture = 0.5) %>%
+  set_engine(engine = "glmnet")
+
+glmn_fit <- glmn_spec %>%
+  fit(y ~ .,
+      data = train
+  )
+
+glmn_wf <- 
+  workflow() %>%
+  add_model(glmn_spec) %>%
+  add_formula(y ~ .)
 
 #----
-# KernalRidge 
-#radial basis function (or squared exponential) kernel applied to the training data
-#https://adrian.ng/R/imp-krr/
-
-#Not well implemented in R, try RBF SVM insteam
+#Not well implemented in R, try RBF SVM instead
 
 svm_rbf_spec <- svm_rbf(rbf_sigma = 0.2) %>%
   set_mode("regression") %>%
@@ -334,7 +328,12 @@ svm_rbf_spec <- svm_rbf(rbf_sigma = 0.2) %>%
 
 svm_rbf_fit <- svm_rbf_spec %>% 
   set_args(cost = 10) %>%
-  fit(y ~ ., data = dat)
+  fit(y ~ ., data = train)
+
+svm_rbf_wf <- 
+  workflow() %>%
+  add_model(svm_rbf_spec) %>%
+  add_formula(y ~ .)
 
 #----
 # SVR: support vector machine (SVM)
@@ -345,40 +344,257 @@ svm_linear_spec <- svm_poly(degree = 1) %>%
 
 svm_linear_fit <- svm_linear_spec %>% 
   set_args(cost = 10) %>%
-  fit(y ~ ., data = dat)
+  fit(y ~ ., data = train)
 
-#----
-# RF: Random forest
-# https://www.tidymodels.org/learn/models/parsnip-ranger-glmnet/
+svm_linear_wf <- 
+  workflow() %>%
+  add_model(svm_linear_spec) %>%
+  add_formula(y ~ .)
 
-rf_defaults <- rand_forest(mode = "regression")
+#-------
+#RF
+rf_spec <- rand_forest(mode = "regression") %>%
+  set_engine("ranger")
 
-
-rf_xy_fit <- 
-  rf_defaults %>%
-  set_engine("ranger") %>%
-  fit_xy(
-    x = dat[, preds],
-    y = dat[,"migration_m"]
+rf_fit <- rf_spec %>%
+  fit(y ~ ., data = train
   )
 
-#---------------
-#Evaluation and plot
+rf_wf <- 
+  workflow() %>%
+  add_model(rf_spec) %>%
+  add_formula(y ~ .)
 
-vip(rf_xy_fit)
+#=====================
+#Evaluation
+# https://juliasilge.com/blog/intro-tidymodels/
 
+results_train <- lm_fit %>%
+  predict(new_data = train) %>%
+  mutate(
+    truth = train$y,
+    model = "lm"
+  ) %>%
+  bind_rows(glmn_fit %>%
+              predict(new_data = train) %>%
+              mutate(
+                truth = train$y,
+                model = "ridgereg"
+              ))%>%
+  bind_rows(svm_rbf_fit %>%
+              predict(new_data = train) %>%
+              mutate(
+                truth = train$y,
+                model = "svm_rbf"
+              ))%>%
+  bind_rows(svm_linear_fit %>%
+              predict(new_data = train) %>%
+              mutate(
+                truth = train$y,
+                model = "svm_linear"
+              ))%>%
+  bind_rows(rf_fit %>%
+              predict(new_data = train) %>%
+              mutate(
+                truth = train$y,
+                model = "rf"
+              ))
 
+results_test <- lm_fit %>%
+  predict(new_data = test) %>%
+  mutate(
+    truth = test$y,
+    model = "lm"
+  ) %>%
+  bind_rows(glmn_fit %>%
+              predict(new_data = test) %>%
+              mutate(
+                truth = test$y,
+                model = "ridgereg"
+              ))%>%
+  bind_rows(svm_rbf_fit %>%
+              predict(new_data = test) %>%
+              mutate(
+                truth = test$y,
+                model = "svm_rbf"
+              ))%>%
+  bind_rows(svm_linear_fit %>%
+              predict(new_data = test) %>%
+              mutate(
+                truth = test$y,
+                model = "svm_linear"
+              ))%>%
+  bind_rows(rf_fit %>%
+              predict(new_data = test) %>%
+              mutate(
+                truth = test$y,
+                model = "rf"
+              ))
 
-# Predict rentals for the test set and bind it to the test_set
-results <- test %>% 
-  bind_cols(svm_linear_fit %>% 
-              # Predict rentals
-              predict(new_data = test) %>% 
-              rename(predictions = .pred))
+#rmse
+results_train %>%
+  group_by(model) %>%
+  rmse(truth = truth, estimate = .pred)
 
-# Compare predictions
-results %>% 
-  select(c(rentals, predictions)) %>% 
-  slice_head(n = 10)
+results_test %>%
+  group_by(model) %>%
+  rmse(truth = truth, estimate = .pred)
+
+#visualize
+results_test %>%
+  mutate(train = "testing") %>%
+  bind_rows(results_train %>%
+              mutate(train = "training")) %>%
+  ggplot(aes(truth, .pred, color = model)) +
+  geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~train) +
+  labs(
+    x = "Truth",
+    y = "Predicted shift",
+    color = "Type of model"
+  )
+
+#===============================
+#cross validation 
+set.seed(1234)
+folds <- vfold_cv(train, v=10) #Or K folds?
+
+#lm
+set.seed(456)
+lm_res <- fit_resamples(
+  lm_wf,
+  folds,
+  control = control_resamples(save_pred = TRUE)
+)
+
+lm_res %>%
+  collect_metrics()
+
+lm_res %>%
+  unnest(.predictions) %>%
+  ggplot(aes(y, .pred, color = id)) +
+  geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
+  geom_point(alpha = 0.5) +
+  labs(
+    x = "Truth",
+    y = "Predicted shift",
+    color = NULL
+  )
+#---------------------
+#glmn
+set.seed(456)
+glmn_res <- fit_resamples(
+  glmn_wf,
+  folds,
+  control = control_resamples(save_pred = TRUE)
+)
+
+glmn_res %>%
+  collect_metrics()
+
+glmn_res %>%
+  unnest(.predictions) %>%
+  ggplot(aes(y, .pred, color = id)) +
+  geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
+  geom_point(alpha = 0.5) +
+  labs(
+    x = "Truth",
+    y = "Predicted shift",
+    color = NULL
+  )
+#---------------------
+#svm_rbf
+set.seed(456)
+svm_rbf_res <- fit_resamples(
+  svm_rbf_wf,
+  folds,
+  control = control_resamples(save_pred = TRUE)
+)
+
+svm_rbf_res %>%
+  collect_metrics()
+
+svm_rbf_res %>%
+  unnest(.predictions) %>%
+  ggplot(aes(y, .pred, color = id)) +
+  geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
+  geom_point(alpha = 0.5) +
+  labs(
+    x = "Truth",
+    y = "Predicted shift",
+    color = NULL
+  )
+#---------------------
+#svm_linear
+set.seed(456)
+svm_linear_res <- fit_resamples(
+  svm_linear_wf,
+  folds,
+  control = control_resamples(save_pred = TRUE)
+)
+
+svm_linear_res %>%
+  collect_metrics()
+
+svm_linear_res %>%
+  unnest(.predictions) %>%
+  ggplot(aes(y, .pred, color = id)) +
+  geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
+  geom_point(alpha = 0.5) +
+  labs(
+    x = "Truth",
+    y = "Predicted shift",
+    color = NULL
+  )
+
+#---------------------
+#rf
+set.seed(456)
+rf_res <- fit_resamples(
+  rf_wf,
+  folds,
+  control = control_resamples(save_pred = TRUE)
+)
+
+rf_res %>%
+  collect_metrics()
+
+rf_res %>%
+  unnest(.predictions) %>%
+  ggplot(aes(y, .pred, color = id)) +
+  geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
+  geom_point(alpha = 0.5) +
+  labs(
+    x = "Truth",
+    y = "Predicted shift",
+    color = NULL
+  )
+
+#==============
+#VIP
+
+# the last fit
+set.seed(345)
+last_lm_fit <- 
+  lm_wf %>% 
+  last_fit(dat_split)
+
+last_lm_fit %>% 
+  extract_fit_parsnip() %>% 
+  vip(num_features = 20, geom="point")
+
+# the last fit
+set.seed(345)
+last_glmn_fit <- 
+  glmn_wf %>% 
+  last_fit(dat_split)
+
+last_glmn_fit %>% 
+  extract_fit_parsnip() %>% 
+  vip(num_features = 20, geom="point")
+
+#No VIP for SVM or RF as currently configured
+
 
 
