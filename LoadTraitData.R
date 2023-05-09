@@ -8,6 +8,7 @@ library(car)
 library(patchwork)
 library(ggcorrplot)
 library(tidymodels)
+library(vip)
 
 #----
 #Make plot of trait predictors for main text and supplement
@@ -257,6 +258,7 @@ plot.bird= ggplot(bird.l) + aes(x=value, y = D_border_0.9)+geom_point()+
 
 #Tidymodels
 #https://rstudio-pubs-static.s3.amazonaws.com/802290_cb734d1218864fd093bdcf69208bd21a.html
+#Example: https://smltar.com/mlregression.html
 
 # install.packages(c('tidyverse', 'tidymodels', 'ranger', 'vip', 'palmerpenguins', 'skimr', 'paletteer', 'nnet', 'here'))
 library(tidymodels)
@@ -291,15 +293,29 @@ dat$diaspore_mass_mg = scale(dat$diaspore_mass_mg)
 lm_spec <- linear_reg() %>%
   set_engine(engine = "lm")
 
-lm_fit <- lm_spec %>%
-  fit(y ~ .,
-      data = train
-  )
-
 lm_wf <- 
   workflow() %>%
   add_model(lm_spec) %>%
   add_formula(y ~ .)
+
+lm_fit <-
+  fit(lm_wf,
+      data = train
+  )
+
+#OLS Poly
+rec_poly <- recipe(y ~ ., data = train) %>%
+  step_poly(., degree = 2)
+
+lm_wf_poly <- 
+  workflow() %>%
+  add_model(lm_spec) %>%
+  add_recipe(rec_poly)
+
+lm_fit_poly <-
+  fit(lm_wf_poly,
+      data = train
+  )
 
 #----
 # Ridge: “ridge”-regularized linear model
@@ -320,6 +336,7 @@ glmn_wf <-
   add_formula(y ~ .)
 
 #----
+#Kernel regression
 #Not well implemented in R, try RBF SVM instead
 
 svm_rbf_spec <- svm_rbf(rbf_sigma = 0.2) %>%
@@ -334,6 +351,8 @@ svm_rbf_wf <-
   workflow() %>%
   add_model(svm_rbf_spec) %>%
   add_formula(y ~ .)
+
+#https://osm.netlify.app/post/kernel-error/
 
 #----
 # SVR: support vector machine (SVM)
@@ -353,7 +372,7 @@ svm_linear_wf <-
 
 #-------
 #RF
-rf_spec <- rand_forest(mode = "regression") %>%
+rf_spec <- rand_forest(mode = "regression", trees = 100) %>%
   set_engine("ranger")
 
 rf_fit <- rf_spec %>%
@@ -458,7 +477,7 @@ results_test %>%
 #===============================
 #cross validation 
 set.seed(1234)
-folds <- vfold_cv(train, v=10) #Or K folds?
+folds <- vfold_cv(train, v=10) #Or K=5 in N<20?
 
 #lm
 set.seed(456)
@@ -594,7 +613,52 @@ last_glmn_fit %>%
   extract_fit_parsnip() %>% 
   vip(num_features = 20, geom="point")
 
-#No VIP for SVM or RF as currently configured
+#No VIP for SVM or RF as currently configured, WORKING ON
 
+#SVM
+#https://stackoverflow.com/questions/62772397/integration-of-variable-importance-plots-within-the-tidy-modelling-framework
+#permutation based
+svm_fit <- workflow() %>%
+  add_model(svm_spec) %>%
+  add_formula(y ~ .) %>%
+  fit(dat_split)
 
+svm_fit %>%
+  pull_workflow_fit() %>%
+  vip(method = "permute", 
+      target = "compounds", metric = "rsquared",
+      pred_wrapper = kernlab::predict, train = train)
+
+#Python implementation uses Shapley-based scores for Kernel and SVM
+svm_fit %>%
+  pull_workflow_fit() %>%
+  vip(method = "shap", 
+      target = "compounds", metric = "rsquared",
+      pred_wrapper = kernlab::predict, train = train)
+
+#https://stackoverflow.com/questions/67833723/r-tidymodels-vip-variable-importance-determination
+#method = c("model", "firm", "permute", "shap")
+#  "model" (the default), for model-specific VI scores (see vi_model() for details).
+#  "firm", for variance-based VI scores (see vi_firm() for details).
+#  "permute", for permutation-based VI scores (see vi_permute for details).
+#  "shap", for Shapley-based VI scores.
+
+#Phython implementation uses Gini scores for RF, but they appear to be for classification
+
+#https://cran.r-project.org/web/packages/vip/vip.pdf
+#rank=TRUE for ranks
+
+#Model metrics
+#vip::metric_mse
+
+#Polynomial expansions
+#https://emilhvitfeldt.github.io/ISLR-tidymodels-labs/07-moving-beyond-linearity.html
+
+#rec_poly <- recipe(wage ~ age, data = Wage) %>%
+#  step_poly(age, degree = 4)
+# poly_wf <- workflow() %>%
+#  add_model(lm_spec) %>%
+#  add_recipe(rec_poly)
+#add orthogonal polynomials 
+#https://recipes.tidymodels.org/reference/step_poly.html
 
