@@ -274,6 +274,9 @@ dat<- dat[,3:ncol(dat)]
 
 preds <-  c("earliest_seed_shed_mo","seed_shed_dur_mos","nichebreadth_num_flor_zones","BreedSysCode","Ave_seed_shed_ht_m",
             "flwr_dur_mos","DispersalMode","diaspore_mass_mg","nichebreadth_amplit_ocean","Nbound_lat_GBIF_nosyn")
+#predictors to consider as polynomials
+preds.poly <-  c("earliest_seed_shed_mo","seed_shed_dur_mos","nichebreadth_num_flor_zones","Ave_seed_shed_ht_m",
+            "flwr_dur_mos","diaspore_mass_mg","Nbound_lat_GBIF_nosyn")
 
 #split the data
 # Split data into 70% for training and 30% for testing
@@ -305,7 +308,9 @@ lm_fit <-
 
 #OLS Poly
 rec_poly <- recipe(y ~ ., data = train) %>%
+  step_center(all_numeric_predictors())%>%
   step_poly(., degree = 2)
+#Fix step poly
 
 lm_wf_poly <- 
   workflow() %>%
@@ -334,6 +339,8 @@ glmn_wf <-
   workflow() %>%
   add_model(glmn_spec) %>%
   add_formula(y ~ .)
+
+#Ridge poly
 
 #----
 #Kernel regression
@@ -394,6 +401,12 @@ results_train <- lm_fit %>%
     truth = train$y,
     model = "lm"
   ) %>%
+  bind_rows(lm_fit_poly %>%
+              predict(new_data = train) %>%
+              mutate(
+                truth = train$y,
+                model = "lm_poly"
+              ))%>%
   bind_rows(glmn_fit %>%
               predict(new_data = train) %>%
               mutate(
@@ -425,6 +438,12 @@ results_test <- lm_fit %>%
     truth = test$y,
     model = "lm"
   ) %>%
+  bind_rows(lm_fit_poly %>%
+              predict(new_data = test) %>%
+              mutate(
+                truth = test$y,
+                model = "lm_poly"
+              ))%>%
   bind_rows(glmn_fit %>%
               predict(new_data = test) %>%
               mutate(
@@ -593,7 +612,7 @@ rf_res %>%
 #==============
 #VIP
 
-# the last fit
+# OLS
 set.seed(345)
 last_lm_fit <- 
   lm_wf %>% 
@@ -603,7 +622,7 @@ last_lm_fit %>%
   extract_fit_parsnip() %>% 
   vip(num_features = 20, geom="point")
 
-# the last fit
+# GLM
 set.seed(345)
 last_glmn_fit <- 
   glmn_wf %>% 
@@ -619,22 +638,22 @@ last_glmn_fit %>%
 #https://stackoverflow.com/questions/62772397/integration-of-variable-importance-plots-within-the-tidy-modelling-framework
 #permutation based
 svm_fit <- workflow() %>%
-  add_model(svm_spec) %>%
+  add_model(svm_linear_spec) %>%
   add_formula(y ~ .) %>%
-  fit(dat_split)
+  fit(train)
 
 svm_fit %>%
   pull_workflow_fit() %>%
   vip(method = "permute", 
-      target = "compounds", metric = "rsquared",
+      target = "y", metric = "rsquared",
       pred_wrapper = kernlab::predict, train = train)
 
 #Python implementation uses Shapley-based scores for Kernel and SVM
 svm_fit %>%
   pull_workflow_fit() %>%
   vip(method = "shap", 
-      target = "compounds", metric = "rsquared",
-      pred_wrapper = kernlab::predict, train = train)
+      #target = "y", metric = "rsquared",
+      pred_wrapper = kernlab::predict, train = train, feature_names= names(train)[1:ncol(train)-1])
 
 #https://stackoverflow.com/questions/67833723/r-tidymodels-vip-variable-importance-determination
 #method = c("model", "firm", "permute", "shap")
