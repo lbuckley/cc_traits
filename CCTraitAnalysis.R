@@ -30,6 +30,8 @@ fish= read.csv("west-coast-triennial _species_generaltraits.csv")
 eplants= read.csv("rumpf_ShiftsTraitsBuckley_20180418.csv")
 lepbird= read.csv("Data_Shifts_NicheMetrics_Traits.csv")
 
+datasets= c("mammals","plants","fish","eplants","lep","bird")
+
 #----
 #Process data
 
@@ -268,7 +270,7 @@ library(ISLR)
 # https://rsample.tidymodels.org/reference/vfold_cv.html
 
 #LOOP THROUGH DATA
-#for(dat.k in 1:6){ 
+for(dat.k in 1:6){ 
 
 if(dat.k==1){
   #MAMMALS
@@ -325,9 +327,9 @@ if(dat.k==4){
   dat<- dat[,3:ncol(dat)]
   
   #set up ordered factors
-  dat$TemperatureIndicator= factor(dat$TemperatureIndicator, ordered=TRUE)
-  dat$NutrientIndicator= factor(dat$NutrientIndicator, ordered=TRUE)
-  dat$LifeStrategy= factor(dat$LifeStrategy, ordered=TRUE)
+ # dat$TemperatureIndicator= factor(dat$TemperatureIndicator, ordered=TRUE)
+ #  dat$NutrientIndicator= factor(dat$NutrientIndicator, ordered=TRUE)
+ #  dat$LifeStrategy= factor(dat$LifeStrategy, ordered=TRUE)
 }
 
 if(dat.k==5){
@@ -385,25 +387,51 @@ lm_fit <-
 #tidy(lm_fit)
 
 #OLS Poly
-rec_poly <- recipe(y ~ ., data = train) %>%
-  step_center(all_numeric_predictors())%>%
-  step_normalize(all_numeric_predictors())%>%
-  step_poly(earliest_seed_shed_mo,seed_shed_dur_mos, degree = 2)
-  #step_poly(earliest_seed_shed_mo,seed_shed_dur_mos,nichebreadth_num_flor_zones,
-  #          Ave_seed_shed_ht_m,flwr_dur_mos,diaspore_mass_mg,Nbound_lat_GBIF_nosyn, degree = 2)
-  #  step_poly(mget(preds.poly), degree = 2)
+#rec_poly <- recipe(y ~ ., data = train) %>%
+#  step_center(all_numeric_predictors())%>%
+#  step_normalize(all_numeric_predictors())%>%
+#   step_poly(mget(preds.poly), degree = 2)
 #######need to generalize
+
+if(dat.k==1){
+  rec_poly <- recipe(y ~ ., data = train) %>%
+    step_center(all_numeric_predictors())%>%
+    step_normalize(all_numeric_predictors()) #%>%
+   # step_poly(Orig_high_limit,Rangesize_km2, Mass_g, degree = 2) #Orig_high_limit,Rangesize_km2, Mass_g,
+}
+
+if(dat.k==2){
+  rec_poly <- recipe(y ~ ., data = train) %>%
+    step_center(all_numeric_predictors())%>%
+    step_normalize(all_numeric_predictors())%>%
+    step_poly(Nbound_lat_GBIF_nosyn, degree = 2)
+    #step_poly(earliest_seed_shed_mo,seed_shed_dur_mos,nichebreadth_num_flor_zones,
+    #          Ave_seed_shed_ht_m,diaspore_mass_mg,Nbound_lat_GBIF_nosyn, degree = 2)
+}
 
 if(dat.k==3){
   rec_poly <- recipe(y ~ ., data = train) %>%
     step_center(all_numeric_predictors())%>%
     step_normalize(all_numeric_predictors())%>%
-    step_poly(earliest_seed_shed_mo,seed_shed_dur_mos, degree = 2)
+    step_poly(DepthRangeDeep, Length, Vulnerability, degree = 2)
 }
 
+if(dat.k==4){
+  rec_poly <- recipe(y ~ ., data = train) %>%
+    step_center(all_numeric_predictors())%>%
+    step_normalize(all_numeric_predictors())%>%
+    step_poly(SeedReleaseHeight,LifeSpan,Dispersal,Persistence, degree = 2)
+}
+
+if(dat.k %in% c(5,6)){
+  rec_poly <- recipe(y ~ ., data = train) %>%
+    step_center(all_numeric_predictors())%>%
+    step_normalize(all_numeric_predictors())%>%
+    step_poly(range.size,body.size, degree = 2)
+}
 
 #https://hansjoerg.me/2020/02/09/tidymodels-for-machine-learning/
-train_poly <- juice(prep(rec_poly, retain=TRUE))
+#train_poly <- juice(prep(rec_poly, retain=TRUE))
 
 lm_spec_poly <- linear_reg() %>%
      set_mode("regression") %>%
@@ -439,13 +467,49 @@ glmn_wf <-
   add_formula(y ~ .)
 
 #Ridge poly
-rec_glmn_poly <- recipe(y ~ ., data = train) %>%
-  step_center(all_numeric_predictors())%>%
-  step_normalize(all_numeric_predictors())%>%
-  step_poly(earliest_seed_shed_mo,seed_shed_dur_mos, degree = 2)%>%
-  #step_ordinalscore(all_factor())
-  step_ordinalscore(BreedSysCode,DispersalMode)
-#need to generalize
+if(dat.k==1){
+  rec_glmn_poly <- recipe(y ~ ., data = train) %>%
+    step_center(all_numeric_predictors())%>%
+    step_normalize(all_numeric_predictors())%>%
+    #step_poly(Orig_high_limit, Rangesize_km2, Mass_g, degree = 2)%>%
+    #step_ordinalscore(all_factor())
+    step_ordinalscore(DietBreadth,DailyRhythm,AnnualRhythm)
+}
+
+if(dat.k==2){
+  rec_glmn_poly <- recipe(y ~ ., data = train) %>%
+    step_center(all_numeric_predictors())%>%
+    step_normalize(all_numeric_predictors())%>%
+    #step_poly(earliest_seed_shed_mo,seed_shed_dur_mos,nichebreadth_num_flor_zones,
+    #          Ave_seed_shed_ht_m,diaspore_mass_mg,Nbound_lat_GBIF_nosyn, degree = 2)%>%
+    step_poly(Nbound_lat_GBIF_nosyn, degree = 2)%>%
+    step_ordinalscore(BreedSysCode, DispersalMode)
+}
+
+if(dat.k==3){
+  rec_glmn_poly <- recipe(y ~ ., data = train) %>%
+    step_center(all_numeric_predictors())%>%
+    step_normalize(all_numeric_predictors())%>%
+    step_poly(DepthRangeDeep, Length, Vulnerability, degree = 2)%>%
+    step_ordinalscore(habitat,WaterType)
+}
+
+if(dat.k==4){
+  rec_glmn_poly <- recipe(y ~ ., data = train) %>%
+    step_center(all_numeric_predictors())%>%
+    step_normalize(all_numeric_predictors())%>%
+    step_poly(SeedReleaseHeight,LifeSpan,Dispersal,Persistence, degree = 2) #%>%
+   # step_ordinalscore(TemperatureIndicator, NutrientIndicator, LifeStrategy)
+}
+
+if(dat.k %in% c(5,6)){
+  rec_glmn_poly <- recipe(y ~ ., data = train) %>%
+    step_center(all_numeric_predictors())%>%
+    step_normalize(all_numeric_predictors())%>%
+    step_poly(range.size,body.size, degree = 2)%>%
+    #step_ordinalscore(all_factor())
+    step_ordinalscore(wintering, num.gen)
+}
 
 glmn_spec_poly <- linear_reg(penalty = 0.001, mixture = 0.5) %>%
   set_engine(engine = "glmnet")
@@ -495,10 +559,10 @@ svm_linear_wf <-
 
 #-------
 #RF
-rf_spec <- rand_forest(mode = "regression", trees = 100) %>%
-  set_engine("ranger")
 #rf_spec <- rand_forest(mode = "regression", trees = 100) %>%
-#  set_engine("randomForest")
+#  set_engine("ranger")
+rf_spec <- rand_forest(mode = "regression", trees = 100) %>%
+  set_engine("randomForest")
 #randomForest(Creditability~.,data=mydata, mtry=best.m, importance=TRUE,ntree=500)
 
 rf_fit <- rf_spec %>%
@@ -814,12 +878,12 @@ svm_linear_vi<-
 
 svm_linear_vi$Sign=NA  
   
-#Python implementation uses Shapley-based scores for Kernel and SVM
-svm_fit %>%
-  pull_workflow_fit() %>%
-  vip(method = "shap", 
-      #target = "y", metric = "rsquared",
-      pred_wrapper = kernlab::predict, train = train, feature_names= names(train)[1:ncol(train)-1])
+# #Python implementation uses Shapley-based scores for Kernel and SVM
+# svm_fit %>%
+#   pull_workflow_fit() %>%
+#   vip(method = "shap", 
+#       #target = "y", metric = "rsquared",
+#       pred_wrapper = kernlab::predict, train = train, feature_names= names(train)[1:ncol(train)-1])
 
 #-----
 #SVM rbf
@@ -862,6 +926,9 @@ rf_vi$Model="rf"
 vi.all= rbind(lm_vi, lm_poly_vi, glmn_vi, glmn_poly_vi, svm_linear_vi, svm_rbf_vi, rf_vi)
 
 #Combine across datasets
+vi.all$dataset= datasets[dat.k]
+cv.all$dataset= datasets[dat.k]
+
 if(dat.k==1){
  vi.dat= vi.all
  cv.dat= cv.all
@@ -871,34 +938,89 @@ if(dat.k>1){
   cv.dat= rbind(cv.dat, cv.all)
 }
 
-# } #end loop datasets
+} #end loop datasets
 
 #=============================
 #PLOTS
 
 #RMSE plot
-cv.plot= ggplot(cv.all) + aes(y=mean, x = Model)+geom_point(size=2)+ #geom_line()+
-  facet_wrap(.~.metric, scales="free_y")
+cv.plot= ggplot(cv.dat) + aes(y=mean, x = Model)+geom_point(size=2)+ #geom_line()+
+  facet_grid(.metric~dataset, scales="free_y")
 
 cv.plot= cv.plot + 
-  geom_errorbar(data=cv.all, aes(x=Model, y=mean, ymin=mean-std_err, ymax=mean+std_err), width=0, col="black")
+  geom_errorbar(data=cv.dat, aes(x=Model, y=mean, ymin=mean-std_err, ymax=mean+std_err), width=0, col="black")
+
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
+pdf("CvPlot.pdf",height = 8, width = 8)
+cv.plot
+dev.off()
   
 #----------
 #VI PLOT
 
 #code by scale
-vi.all$RF=0
-vi.all$RF[vi.all$Model %in% c("rf")]=1
+vi.dat$RF=0
+vi.dat$RF[vi.dat$Model %in% c("rf")]=1
 
 #change poly 1 name
-vi.all$Variable= gsub("_poly_1", "", vi.all$Variable)
+vi.dat$Variable= gsub("_poly_1", "", vi.dat$Variable)
 
-vi.all=vi.all[with(vi.all, order(Model, Importance)), ]
+vi.dat=vi.dat[with(vi.dat, order(Model, Importance)), ]
 
 #plot
-vi.plot= ggplot(vi.all) + aes(y=Importance, x = Variable, color=Model, group=Model)+geom_point(size=2)+geom_line()+
-  facet_wrap(RF~., scales="free_x") #+ theme(axis.text.x = element_text(angle=90))
-vi.plot+ coord_flip()
+vi.plot= ggplot(vi.dat) + aes(y=Importance, x = Variable, color=Model, group=Model)+geom_point(size=2)+geom_line()+
+  facet_grid(RF~dataset, scales="free_y") + theme(axis.text.x = element_text(angle=90))
+
+#split by dataset and split
+library(patchwork)
+vi.plots <- vector('list', length(datasets))
+
+for(dat.k in 1:6){
+  vi.plot= ggplot(vi.dat[vi.dat$dataset==datasets[dat.k],]) + aes(y=Importance, x = Variable, color=Model, group=Model)+geom_point(size=2)+geom_line()+
+    facet_grid(.~RF, scales="free")+ggtitle(datasets[dat.k])
+  if(dat.k<6) vi.plot=vi.plot + theme(legend.position = "none")
+  vi.plots[[dat.k]]= vi.plot+ coord_flip()
+}
+
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
+pdf("ViPlots.pdf",height = 8, width = 14)
+(vi.plots[[1]] | vi.plots[[2]] | vi.plots[[3]])/
+  (vi.plots[[4]] | vi.plots[[5]] | vi.plots[[6]])
+dev.off()
+
+#----------
+#Predictor plots
+#https://juliasilge.com/blog/mario-kart/
+#https://okan.cloud/posts/2021-03-23-visualizing-machine-learning-models/
+
+
+library(DALEXtra)
+
+lm_explainer <- explain_tidymodels(
+  svm_linear_fit,
+  data = dplyr::select(train, -y),
+  y = train$y,
+  verbose = FALSE
+)
+
+pdp_var <- model_profile(
+  lm_explainer,
+  variables = "range.size",
+  type="partial"
+)
+plot(pdp_var)
+
+pred_var<- predict_parts(
+  lm_explainer,
+  train
+)
+plot(pred_var)
+
+svm_rf <- variable_importance(lm_explainer, loss_function = loss_root_mean_square)
+plot(svm_rf)
+
+vip_rf  <- model_parts(explainer = lm_explainer,  B = 50, N = NULL)
+plot(vip_rf)
 
 #===============================
 #https://stackoverflow.com/questions/67833723/r-tidymodels-vip-variable-importance-determination
