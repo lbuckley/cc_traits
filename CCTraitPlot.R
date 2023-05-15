@@ -6,7 +6,7 @@ for(dat.k in 1:6){
     data.l<- melt(mammals, id.vars = c("Taxon", "High_change"))
     
     plot.d1= ggplot(data.l) + aes(x=value, y = High_change)+geom_point()+
-      facet_wrap(.~variable, scales="free_x")
+      facet_wrap(.~variable, scales="free_x")+
       ggtitle('Mammals')+
       theme_bw(base_size=14)
     
@@ -18,78 +18,78 @@ for(dat.k in 1:6){
     data.l<- melt(plants, id.vars = c("Taxon", "migration_m"))
     
     plot.d2= ggplot(data.l) + aes(x=value, y = migration_m)+geom_point()+
-      facet_wrap(.~variable, scales="free_x")
+      facet_wrap(.~variable, scales="free_x")+
     ggtitle('Alpine plants')+
       theme_bw(base_size=14)
   
-    #### UPDATE
-  #to long format factor
-  data.l<- melt(plants, id.vars = c("Taxon", "migration_m"))
-  
-  ggplot(data.l, aes(migration_m, color=variable))+geom_density()
+  # #to long format factor
+  # data.l<- melt(plants, id.vars = c("Taxon", "migration_m"))
+  # 
+  # ggplot(data.l[data.l$variable==c("DispersalMode", "BreedSysCode","nichebreadth_amplit_ocean"),], 
+  #        aes(migration_m, color=factor(value)))+geom_density()+
+  #          facet_wrap(.~variable)
   
   }
   
   if(dat.k==3){
     #FISH
-    #set up data
-    dat=na.omit(fish)
-    dat$y= dat$Latitudinal.Difference
-    #drop ID rows
-    dat<- dat[,3:ncol(dat)]
+    #to long format
+    data.l<- melt(fish, id.vars = c("Species", "Latitudinal.Difference"))
     
-    #set up ordered factors
-    dat$habitat= factor(dat$habitat, ordered=TRUE)
-    dat$WaterType= factor(dat$WaterType, ordered=TRUE)
+    plot.d3= ggplot(data.l) + aes(x=value, y = Latitudinal.Difference)+geom_point()+
+      facet_wrap(.~variable, scales="free_x")+
+    ggtitle('Fish')+
+      theme_bw(base_size=14)
   }
   
   if(dat.k==4){
     #EURO PLANTS
-    #set up data
-    dat=na.omit(eplants)
-    dat$y= dat$LeadingEdge
-    #drop ID rows
-    dat<- dat[,3:ncol(dat)]
+    #to long format
+    data.l<- melt(eplants, id.vars = c("speciesname", "LeadingEdge"))
     
-    #set up ordered factors
-    # dat$TemperatureIndicator= factor(dat$TemperatureIndicator, ordered=TRUE)
-    #  dat$NutrientIndicator= factor(dat$NutrientIndicator, ordered=TRUE)
-    #  dat$LifeStrategy= factor(dat$LifeStrategy, ordered=TRUE)
+    plot.d4= ggplot(data.l) + aes(x=value, y = LeadingEdge)+geom_point()+
+      facet_wrap(.~variable, scales="free_x")+
+      ggtitle('European plants')+
+      theme_bw(base_size=14)
   }
   
   if(dat.k==5){
     #LEPS
-    #set up data
-    dat=na.omit(lep)
-    dat$y= dat$D_border_0.9
-    #drop ID rows
-    dat<- dat[,4:ncol(dat)]
+    #to long format
+    data.l<- melt(lep, id.vars = c("Species", "Taxonomic.group","D_border_0.9"))
     
-    #set up ordered factors
-    dat$wintering= factor(dat$wintering, ordered=TRUE)
-    dat$num.gen= factor(dat$num.gen, ordered=TRUE)
+    plot.d5= ggplot(data.l) + aes(x=value, y = D_border_0.9)+geom_point()+
+      facet_wrap(.~variable, scales="free_x")+ 
+      ggtitle('Lepidopterans')+
+      theme_bw(base_size=14)
   }
   
   if(dat.k==6){
     #BIRDS
-    #set up data
-    dat=na.omit(bird)
-    dat$y= dat$D_border_0.9
-    #drop ID rows
-    dat<- dat[,4:ncol(dat)]
+    #to long format
+    data.l<- melt(bird, id.vars = c("Species", "Taxonomic.group","D_border_0.9"))
     
-    #set up ordered factors
-    dat$wintering= factor(dat$wintering, ordered=TRUE)
-    dat$num.gen= factor(dat$num.gen, ordered=TRUE)
+    plot.d6= ggplot(data.l) + aes(x=value, y = D_border_0.9)+geom_point()+
+      facet_wrap(.~variable, scales="free_x")+ 
+      ggtitle('Birds')+
+      theme_bw(base_size=14)
   }
-  
-
-  
-  
-  
-  
 } #end loop datasheets
+
+#setwd for figures
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
+
+pdf("Fig0_alltraits.pdf", onefile = TRUE)
+print(plot.d1)
+print(plot.d2)
+print(plot.d3)
+print(plot.d4)
+print(plot.d5)
+print(plot.d6)
+dev.off()
+
 #--------------
+#SELECT PANELS
 #PLOT PREDICTORS
 
 # alpine plants: seed shed month earliest, number floristic zones

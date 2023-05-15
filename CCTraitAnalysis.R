@@ -691,7 +691,7 @@ results_test %>%
 #===============================
 #cross validation 
 set.seed(1234)
-folds <- vfold_cv(train, v=10) #Or K=5 in N<20?
+folds <- vfold_cv(dat, v=7) #Or K=5 in N<20?
 
 #lm
 set.seed(456)
@@ -806,7 +806,120 @@ rf_res %>%
 
 #==============
 #VIP
+#VI for cross validation
+#https://stackoverflow.com/questions/72538064/tidymodels-how-to-extract-importance-from-training-data/72680901#72680901
 
+get_rf_imp <- function(x) {
+  x %>% 
+    extract_fit_parsnip() %>% 
+    vip::vi()
+}
+
+ctrl_imp <- control_grid(extract = get_rf_imp)
+
+#OLS
+lm_res <-
+  workflow(y ~ ., lm_spec) %>%
+  fit_resamples(folds, control = ctrl_imp)
+
+lm_poly_res <-
+  workflow(y ~ ., lm_spec_poly) %>%
+  fit_resamples(folds, control = ctrl_imp)
+
+#RR
+glmn_res <-
+  workflow(y ~ ., glmn_spec) %>%
+  fit_resamples(folds, control = ctrl_imp)
+
+glmn_poly_res <-
+  workflow(y ~ ., glmn_spec_poly) %>%
+  fit_resamples(folds, control = ctrl_imp)
+
+#SVM linear
+#https://stackoverflow.com/questions/62772397/integration-of-variable-importance-plots-within-the-tidy-modelling-framework
+#permutation based
+svm_linear_fit <- workflow() %>%
+  add_model(svm_linear_spec) %>%
+  add_formula(y ~ .) %>%
+  fit(train)
+
+svm_linear_vi<-
+  svm_linear_fit %>%
+  pull_workflow_fit() %>%
+  vi(method = "permute", 
+     target = "y", metric = "rsquared",
+     pred_wrapper = kernlab::predict, train = train, nsim=10)
+
+#SVM RBF
+svm_rbf_fit <- workflow() %>%
+  add_model(svm_rbf_spec) %>%
+  add_formula(y ~ .) %>%
+  fit(train)
+
+svm_rbf_vi<-
+  svm_rbf_fit %>%
+  pull_workflow_fit() %>%
+  vi(method = "permute", 
+     target = "y", metric = "rsquared",
+     pred_wrapper = kernlab::predict, train = train, nsim=10)
+
+#RF
+rf_res <-
+  workflow(y ~ ., rf_spec) %>%
+  fit_resamples(folds, control = ctrl_imp)
+
+#Gather VI
+mods= c("lm","lm poly","rr","rr poly","rf")
+
+for(mod.k in 1:5){
+
+if(mod.k==1) mod_res<- lm_res
+if(mod.k==2) mod_res<- lm_poly_res
+if(mod.k==3) mod_res<- glmn_res
+if(mod.k==4) mod_res<- glmn_poly_res
+if(mod.k==5) mod_res<- rf_res
+
+mod.vi= mod_res %>%
+  select(id, .extracts) %>%
+  unnest(.extracts) %>%
+  unnest(.extracts) 
+
+mod.vi$ImpSign<- mod.vi$Importance
+mod.vi$ImpSign[which(mod.vi$Sign== "NEG")]= mod.vi$ImpSign[which(mod.vi$Sign== "NEG")] * (-1)
+
+mod.vi= mod.vi %>%
+group_by(Variable) %>%
+ summarise(Mean = mean(Importance),
+          Variance = sd(Importance),
+          Mean.sign = mean(ImpSign),
+          Variance.sign = sd(ImpSign),
+          ) 
+
+mod.vi$Model<- mods[mod.k]
+
+if(mod.k==1) vi.mods= mod.vi 
+if(mod.k>1) vi.mods= rbind(vi.mods, mod.vi)
+ 
+
+#add svm
+vi.svm1= as.data.frame(matrix(NA, nrow= nrow(svm_linear_vi),ncol=6))
+names(vi.svm1)= names(vi.mods)
+vi.svm1$Variable= svm_linear_vi$Variable
+vi.svm1$Mean= svm_linear_vi$Importance
+vi.svm1$Variance= svm_linear_vi$StDev
+vi.mods= rbind(vi.mods, vi.svm1)
+
+vi.svm1= as.data.frame(matrix(NA, nrow= nrow(svm_rbf_vi),ncol=6))
+names(vi.svm1)= names(vi.mods)
+vi.svm1$Variable= svm_rbf_vi$Variable
+vi.svm1$Mean= svm_rbf_vi$Importance
+vi.svm1$Variance= svm_rbf_vi$StDev
+vi.mods= rbind(vi.mods, vi.svm1)
+}  #end loop models
+
+
+#------------
+#MSE
 # OLS
 set.seed(345)
 last_lm_fit <- 
@@ -927,14 +1040,17 @@ vi.all= rbind(lm_vi, lm_poly_vi, glmn_vi, glmn_poly_vi, svm_linear_vi, svm_rbf_v
 
 #Combine across datasets
 vi.all$dataset= datasets[dat.k]
+vi.mods$dataset= datasets[dat.k]
 cv.all$dataset= datasets[dat.k]
 
 if(dat.k==1){
  vi.dat= vi.all
+ vi.dat2= vi.mods
  cv.dat= cv.all
 }
 if(dat.k>1){
   vi.dat= rbind(vi.dat, vi.all)
+  vi.dat2= rbind(vi.dat2, vi.mods)
   cv.dat= rbind(cv.dat, cv.all)
 }
 
@@ -987,6 +1103,16 @@ pdf("ViPlots.pdf",height = 8, width = 14)
 (vi.plots[[1]] | vi.plots[[2]] | vi.plots[[3]])/
   (vi.plots[[4]] | vi.plots[[5]] | vi.plots[[6]])
 dev.off()
+
+#------------------
+#VI plots with cross validation
+
+#code by scale
+vi.mods$RF=0
+vi.mods$RF[vi.mods$Model %in% c("rf")]=1
+
+vi.plot= ggplot(vi.mods) + aes(y=Mean, x = Variable, color=Model, group=Model)+geom_point()+geom_line()+
+  facet_grid(RF~dataset, scales="free_y") + theme(axis.text.x = element_text(angle=90))
 
 #----------
 #Predictor plots
