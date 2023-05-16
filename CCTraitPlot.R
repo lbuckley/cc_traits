@@ -1,3 +1,9 @@
+#Vars to plot?
+# alpine plants: seed shed month earliest, number floristic zones
+# European plants: temp indicator, seed release height
+# Mammals: alt timit, longevity
+# Fish: depth, benthopelagic, vulnerability
+
 for(dat.k in 1:6){ 
   
   if(dat.k==1){

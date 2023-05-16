@@ -11,15 +11,6 @@ library(tidymodels)
 library(vip)
 
 #----
-#Make plot of trait predictors for main text and supplement
-
-#Vars to plot?
-# alpine plants: seed shed month earliest, number floristic zones
-# European plants: temp indicator, seed release height
-# Mammals: alt timit, longevity
-# Fish: depth, benthopelagic, vulnerability
-
-#----
 #read data
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/data")
@@ -576,119 +567,7 @@ rf_wf <-
 
 #=====================
 #Evaluation
-# https://juliasilge.com/blog/intro-tidymodels/
 
-results_train <- lm_fit %>%
-  predict(new_data = train) %>%
-  mutate(
-    truth = train$y,
-    model = "lm"
-  ) %>%
-  bind_rows(lm_fit_poly %>%
-              predict(new_data = train) %>%
-              mutate(
-                truth = train$y,
-                model = "lm_poly"
-              ))%>%
-  bind_rows(glmn_fit %>%
-              predict(new_data = train) %>%
-              mutate(
-                truth = train$y,
-                model = "ridgereg"
-              ))%>%
-  bind_rows(glmn_fit_poly %>%
-              predict(new_data = train) %>%
-              mutate(
-                truth = train$y,
-                model = "ridgereg"
-              ))%>%
-  bind_rows(svm_rbf_fit %>%
-              predict(new_data = train) %>%
-              mutate(
-                truth = train$y,
-                model = "svm_rbf"
-              ))%>%
-  bind_rows(svm_linear_fit %>%
-              predict(new_data = train) %>%
-              mutate(
-                truth = train$y,
-                model = "svm_linear"
-              ))%>%
-  bind_rows(rf_fit %>%
-              predict(new_data = train) %>%
-              mutate(
-                truth = train$y,
-                model = "rf"
-              ))
-
-results_test <- lm_fit %>%
-  predict(new_data = test) %>%
-  mutate(
-    truth = test$y,
-    model = "lm"
-  ) %>%
-  bind_rows(lm_fit_poly %>%
-              predict(new_data = test) %>%
-              mutate(
-                truth = test$y,
-                model = "lm_poly"
-              ))%>%
-  bind_rows(glmn_fit %>%
-              predict(new_data = test) %>%
-              mutate(
-                truth = test$y,
-                model = "ridgereg"
-              ))%>%
-  bind_rows(glmn_fit_poly %>%
-              predict(new_data = test) %>%
-              mutate(
-                truth = test$y,
-                model = "ridgereg"
-              ))%>%
-  bind_rows(svm_rbf_fit %>%
-              predict(new_data = test) %>%
-              mutate(
-                truth = test$y,
-                model = "svm_rbf"
-              ))%>%
-  bind_rows(svm_linear_fit %>%
-              predict(new_data = test) %>%
-              mutate(
-                truth = test$y,
-                model = "svm_linear"
-              ))%>%
-  bind_rows(rf_fit %>%
-              predict(new_data = test) %>%
-              mutate(
-                truth = test$y,
-                model = "rf"
-              ))
-
-#rmse
-results_train %>%
-  group_by(model) %>%
-  rmse(truth = truth, estimate = .pred)
-
-results_test %>%
-  group_by(model) %>%
-  rmse(truth = truth, estimate = .pred)
-
-#visualize
-results_test %>%
-  mutate(train = "testing") %>%
-  bind_rows(results_train %>%
-              mutate(train = "training")) %>%
-  ggplot(aes(truth, .pred, color = model)) +
-  geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
-  geom_point(alpha = 0.5) +
-  facet_wrap(~train) +
-  labs(
-    x = "Truth",
-    y = "Predicted shift",
-    color = "Type of model"
-  )
-
-#===============================
 #cross validation 
 set.seed(1234)
 folds <- vfold_cv(dat, v=7) #Or K=5 in N<20?
@@ -900,7 +779,6 @@ mod.vi$Model<- mods[mod.k]
 if(mod.k==1) vi.mods= mod.vi 
 if(mod.k>1) vi.mods= rbind(vi.mods, mod.vi)
  
-
 #add svm
 vi.svm1= as.data.frame(matrix(NA, nrow= nrow(svm_linear_vi),ncol=6))
 names(vi.svm1)= names(vi.mods)
@@ -917,140 +795,17 @@ vi.svm1$Variance= svm_rbf_vi$StDev
 vi.mods= rbind(vi.mods, vi.svm1)
 }  #end loop models
 
-
 #------------
-#MSE
-# OLS
-set.seed(345)
-last_lm_fit <- 
-  lm_wf %>% 
-  last_fit(dat_split)
-
-#last_lm_fit %>% 
-#  extract_fit_parsnip() %>% 
-#  vip(num_features = 20, geom="point")
-
-lm_vi <-
-last_lm_fit %>% 
-  extract_fit_parsnip() %>% 
-  vi()
-
-vip::metric_mse
-
-#-----
-#OLS POLY
-set.seed(345)
-last_lm_ols_fit <- 
-  lm_wf_poly %>% 
-  last_fit(dat_split)
-
-lm_poly_vi <-
-  last_lm_ols_fit %>% 
-  extract_fit_parsnip() %>% 
-  vi()
-
-#-----
-# RR
-set.seed(345)
-last_glmn_fit <- 
-  glmn_wf %>% 
-  last_fit(dat_split)
-
-glmn_vi <-
-  last_lm_ols_fit %>% 
-  extract_fit_parsnip() %>% 
-  vi()
-
-#-----
-# RR POLY
-set.seed(345)
-last_glmn_poly_fit <- 
-  glmn_wf_poly %>% 
-  last_fit(dat_split)
-
-glmn_poly_vi <-
-  last_lm_ols_fit %>% 
-  extract_fit_parsnip() %>% 
-  vi()
-
-#-----
-#SVM linear
-#https://stackoverflow.com/questions/62772397/integration-of-variable-importance-plots-within-the-tidy-modelling-framework
-#permutation based
-svm_linear_fit <- workflow() %>%
-  add_model(svm_linear_spec) %>%
-  add_formula(y ~ .) %>%
-  fit(train)
-
-svm_linear_vi<-
-  svm_linear_fit %>%
-  pull_workflow_fit() %>%
-  vi(method = "permute", 
-      target = "y", metric = "rsquared",
-      pred_wrapper = kernlab::predict, train = train)
-
-svm_linear_vi$Sign=NA  
-  
-# #Python implementation uses Shapley-based scores for Kernel and SVM
-# svm_fit %>%
-#   pull_workflow_fit() %>%
-#   vip(method = "shap", 
-#       #target = "y", metric = "rsquared",
-#       pred_wrapper = kernlab::predict, train = train, feature_names= names(train)[1:ncol(train)-1])
-
-#-----
-#SVM rbf
-svm_rbf_fit <- workflow() %>%
-  add_model(svm_rbf_spec) %>%
-  add_formula(y ~ .) %>%
-  fit(train)
-
-svm_rbf_vi<-
-svm_rbf_fit %>%
-  pull_workflow_fit() %>%
-  vi(method = "permute", 
-      target = "y", metric = "rsquared",
-      pred_wrapper = kernlab::predict, train = train)
-
-svm_rbf_vi$Sign=NA 
-
-#-----
-#RF
-set.seed(345)
-last_rf_fit <- 
-  rf_wf %>% 
-  last_fit(dat_split)
-
-rf_vi <-
-  last_rf_fit %>% 
-  extract_fit_parsnip() %>% 
-  vi()
-
-rf_vi$Sign=NA
-
-#combine vi
-lm_vi$Model="lm"
-lm_poly_vi$Model="lm poly"
-glmn_vi$Model="rr"
-glmn_poly_vi$Model="rr poly"
-svm_linear_vi$Model="svm linear"
-svm_rbf_vi$Model="svm rbf"
-rf_vi$Model="rf"
-vi.all= rbind(lm_vi, lm_poly_vi, glmn_vi, glmn_poly_vi, svm_linear_vi, svm_rbf_vi, rf_vi)
-
 #Combine across datasets
-vi.all$dataset= datasets[dat.k]
 vi.mods$dataset= datasets[dat.k]
 cv.all$dataset= datasets[dat.k]
 
 if(dat.k==1){
- vi.dat= vi.all
- vi.dat2= vi.mods
+ vi.dat= vi.mods
  cv.dat= cv.all
 }
 if(dat.k>1){
-  vi.dat= rbind(vi.dat, vi.all)
-  vi.dat2= rbind(vi.dat2, vi.mods)
+  vi.dat= rbind(vi.dat, vi.mods)
   cv.dat= rbind(cv.dat, cv.all)
 }
 
@@ -1071,20 +826,14 @@ pdf("CvPlot.pdf",height = 8, width = 8)
 cv.plot
 dev.off()
   
-#----------
-#VI PLOT
+#------------------
+#VI plots with cross validation
 
 #code by scale
 vi.dat$RF=0
 vi.dat$RF[vi.dat$Model %in% c("rf")]=1
 
-#change poly 1 name
-vi.dat$Variable= gsub("_poly_1", "", vi.dat$Variable)
-
-vi.dat=vi.dat[with(vi.dat, order(Model, Importance)), ]
-
-#plot
-vi.plot= ggplot(vi.dat) + aes(y=Importance, x = Variable, color=Model, group=Model)+geom_point(size=2)+geom_line()+
+vi.plot= ggplot(vi.dat) + aes(y=Mean, x = Variable, color=Model, group=Model)+geom_point()+geom_line()+
   facet_grid(RF~dataset, scales="free_y") + theme(axis.text.x = element_text(angle=90))
 
 #split by dataset and split
@@ -1092,94 +841,21 @@ library(patchwork)
 vi.plots <- vector('list', length(datasets))
 
 for(dat.k in 1:6){
-  vi.plot= ggplot(vi.dat[vi.dat$dataset==datasets[dat.k],]) + aes(y=Importance, x = Variable, color=Model, group=Model)+geom_point(size=2)+geom_line()+
+  vi.plot= ggplot(vi.dat[vi.dat$dataset==datasets[dat.k],]) + aes(y=Mean, x = Variable, color=Model, group=Model)+geom_point(size=2)+geom_line()+
     facet_grid(.~RF, scales="free")+ggtitle(datasets[dat.k])
+  
+  vi.plot= vi.plot + 
+    geom_errorbar(data=vi.dat[vi.dat$dataset==datasets[dat.k],], aes(y=Mean, x = Variable, ymin=Mean-Variance, ymax=Mean+Variance), width=0, col="black")
+  
   if(dat.k<6) vi.plot=vi.plot + theme(legend.position = "none")
   vi.plots[[dat.k]]= vi.plot+ coord_flip()
+  
 }
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
-pdf("ViPlots.pdf",height = 8, width = 14)
+pdf("ViPlotsCV.pdf",height = 8, width = 14)
 (vi.plots[[1]] | vi.plots[[2]] | vi.plots[[3]])/
   (vi.plots[[4]] | vi.plots[[5]] | vi.plots[[6]])
 dev.off()
 
-#------------------
-#VI plots with cross validation
-
-#code by scale
-vi.dat2$RF=0
-vi.dat2$RF[vi.dat2$Model %in% c("rf")]=1
-
-vi.plot= ggplot(vi.dat2) + aes(y=Mean, x = Variable, color=Model, group=Model)+geom_point()+geom_line()+
-  facet_grid(RF~dataset, scales="free_y") + theme(axis.text.x = element_text(angle=90))
-
-#----------
-#Predictor plots
-#https://juliasilge.com/blog/mario-kart/
-#https://okan.cloud/posts/2021-03-23-visualizing-machine-learning-models/
-
-
-library(DALEXtra)
-
-lm_explainer <- explain_tidymodels(
-  svm_linear_fit,
-  data = dplyr::select(train, -y),
-  y = train$y,
-  verbose = FALSE
-)
-
-pdp_var <- model_profile(
-  lm_explainer,
-  variables = "range.size",
-  type="partial"
-)
-plot(pdp_var)
-
-pred_var<- predict_parts(
-  lm_explainer,
-  train
-)
-plot(pred_var)
-
-svm_rf <- variable_importance(lm_explainer, loss_function = loss_root_mean_square)
-plot(svm_rf)
-
-vip_rf  <- model_parts(explainer = lm_explainer,  B = 50, N = NULL)
-plot(vip_rf)
-
 #===============================
-#https://stackoverflow.com/questions/67833723/r-tidymodels-vip-variable-importance-determination
-#method = c("model", "firm", "permute", "shap")
-#  "model" (the default), for model-specific VI scores (see vi_model() for details).
-#  "firm", for variance-based VI scores (see vi_firm() for details).
-#  "permute", for permutation-based VI scores (see vi_permute for details).
-#  "shap", for Shapley-based VI scores.
-
-#Phython implementation uses Gini scores for RF, but they appear to be for classification
-
-#https://cran.r-project.org/web/packages/vip/vip.pdf
-#rank=TRUE for ranks
-
-#Model metrics
-#vip::metric_mse
-
-#Polynomial expansions
-#https://emilhvitfeldt.github.io/ISLR-tidymodels-labs/07-moving-beyond-linearity.html
-
-#rec_poly <- recipe(wage ~ age, data = Wage) %>%
-#  step_poly(age, degree = 4)
-# poly_wf <- workflow() %>%
-#  add_model(lm_spec) %>%
-#  add_recipe(rec_poly)
-#add orthogonal polynomials 
-#https://recipes.tidymodels.org/reference/step_poly.html
-
-# rec <- recipe(cost ~ ., data = train) |> 
-#   update_role(id, new_role = 'id') |>
-#   step_normalize(all_numeric_predictors()) |>
-#   step_poly(cost, gross_weight, store_sales_in_millions) |>
-#   step_interact(~ all_predictors():all_predictors())
-
-#https://hansjoerg.me/2020/02/09/tidymodels-for-machine-learning/
-  
