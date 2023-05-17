@@ -21,7 +21,7 @@ fish= read.csv("west-coast-triennial _species_generaltraits.csv")
 eplants= read.csv("rumpf_ShiftsTraitsBuckley_20180418.csv")
 lepbird= read.csv("Data_Shifts_NicheMetrics_Traits.csv")
 
-datasets= c("mammals","plants","fish","eplants","lep","bird")
+datasets= c("plants","eplants", "lep", "fish", "bird", "mammals")
 
 #----
 #Process data
@@ -51,6 +51,12 @@ mammals.l<- mammals %>%
 ## Facet labels
 trait.labs <- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","Range size (km2)","Mass (g)","Daily rhythm","Annual rhythm","Diet breadth")
 names(trait.labs) <- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DailyRhythm","AnnualRhythm","DietBreadth")
+
+#drop daily and anual rhythm due to spead
+mammals=mammals[,-c("DailyRhythm","AnnualRhythm")]
+#log transform range size and mass
+mammals$Mass_g= log(mammals$Mass_g)
+mammals$Rangesize_km2= log(mammals$Rangesize_km2)
 
 #plot
 plot.m= ggplot(mammals.l) + aes(x=value, y = High_change)+geom_point()+
@@ -86,6 +92,11 @@ plants=plants[,c("Taxon","migration_m","earliest_seed_shed_mo","seed_shed_dur_mo
                  "nichebreadth_num_flor_zones", "BreedSysCode",
                  "Ave_seed_shed_ht_m","flwr_dur_mos","DispersalMode",
                  "diaspore_mass_mg","nichebreadth_amplit_ocean","Nbound_lat_GBIF_nosyn")]
+
+
+#restrict variables to increase datasets
+plants=plants[,c("Taxon","migration_m","earliest_seed_shed_mo","seed_shed_dur_mos",
+                 "Nbound_lat_GBIF_nosyn")]
 
 #check correlations
 r <- cor(plants[,c(3:12)], use="complete.obs")
@@ -266,21 +277,21 @@ for(dat.k in 1:6){
 if(dat.k==1){
   #MAMMALS
   #set up data
-  dat=na.omit(mammals)
+  dat=mammals
   dat$y= dat$High_change
   #drop ID rows
   dat<- dat[,3:ncol(dat)]
   
   #set up ordered factors
-  dat$DietBreadth= factor(dat$DietBreadth, ordered=TRUE)
-  dat$DailyRhythm= factor(dat$DailyRhythm, ordered=TRUE)
-  dat$AnnualRhythm= factor(dat$AnnualRhythm, ordered=TRUE)
+  dat$DietBreadth= factor(dat$DietBreadth)
+  dat$DailyRhythm= factor(dat$DailyRhythm)
+  dat$AnnualRhythm= factor(dat$AnnualRhythm)
 }
 
 if(dat.k==2){
   #PLANTS
   #set up data
-  dat=na.omit(plants)
+  dat=plants
   dat$y= dat$migration_m
   #drop ID rows
   dat<- dat[,3:ncol(dat)]
@@ -293,13 +304,13 @@ if(dat.k==2){
   
   #set up ordered factors
   dat$BreedSysCode= factor(dat$BreedSysCode, ordered=TRUE)
-  dat$DispersalMode= factor(dat$DispersalMode, ordered=TRUE)
+  dat$DispersalMode= factor(dat$DispersalMode)
 }
 
 if(dat.k==3){
   #FISH
   #set up data
-  dat=na.omit(fish)
+  dat=fish
   dat$y= dat$Latitudinal.Difference
   #drop ID rows
   dat<- dat[,3:ncol(dat)]
@@ -312,7 +323,7 @@ if(dat.k==3){
 if(dat.k==4){
   #EURO PLANTS
   #set up data
-  dat=na.omit(eplants)
+  dat=eplants
   dat$y= dat$LeadingEdge
   #drop ID rows
   dat<- dat[,3:ncol(dat)]
@@ -326,27 +337,27 @@ if(dat.k==4){
 if(dat.k==5){
   #LEPS
   #set up data
-  dat=na.omit(lep)
+  dat=lep
   dat$y= dat$D_border_0.9
   #drop ID rows
   dat<- dat[,4:ncol(dat)]
   
   #set up ordered factors
   dat$wintering= factor(dat$wintering, ordered=TRUE)
-  dat$num.gen= factor(dat$num.gen, ordered=TRUE)
+  dat$num.gen= factor(dat$num.gen)
 }
 
 if(dat.k==6){
   #BIRDS
   #set up data
-  dat=na.omit(bird)
+  dat=bird
   dat$y= dat$D_border_0.9
   #drop ID rows
   dat<- dat[,4:ncol(dat)]
   
   #set up ordered factors
   dat$wintering= factor(dat$wintering, ordered=TRUE)
-  dat$num.gen= factor(dat$num.gen, ordered=TRUE)
+  dat$num.gen= factor(dat$num.gen)
 }
 
 #-------------------
@@ -359,6 +370,8 @@ dat_split <- dat %>%
 # Extract the data in each split
 train <- training(dat_split)
 test <- testing(dat_split)
+
+train<- na.omit(train)
 
 #-----
 #OLS
@@ -434,7 +447,7 @@ lm_wf_poly <-
   add_recipe(rec_poly)
 
 lm_fit_poly <- lm_wf_poly %>%
-  fit(data=train)
+  fit(data=na.omit(train))
 
 #Fit
 #lm_fit_poly <- fit(lm_spec_poly, y ~ ., train_poly)
@@ -511,7 +524,7 @@ glmn_wf_poly <-
   add_recipe(rec_glmn_poly)
 
 glmn_fit_poly <- glmn_wf_poly %>%
-  fit(data=train)
+  fit(data=na.omit(train))
 
 #----
 #Kernel regression
@@ -570,7 +583,7 @@ rf_wf <-
 
 #cross validation 
 set.seed(1234)
-folds <- vfold_cv(dat, v=7) #Or K=5 in N<20?
+folds <- vfold_cv(na.omit(dat), v=7) #Or K=5 in N<20?
 
 #lm
 set.seed(456)
@@ -607,6 +620,36 @@ lm_res <- fit_resamples(
 cv.metric= lm_res %>%
   collect_metrics()
 cv.metric$Model="lm poly"
+cv.all=rbind(cv.all, cv.metric)
+
+#---------------------
+#ridge regression
+
+set.seed(456)
+glmn_res <- fit_resamples(
+  glmn_wf,
+  folds,
+  control = control_resamples(save_pred = TRUE)
+)
+
+cv.metric= glmn_res %>%
+  collect_metrics()
+cv.metric$Model="rr"
+cv.all=rbind(cv.all, cv.metric)
+
+#---------------------
+#ridge regression poly
+
+set.seed(456)
+glmn_res_poly <- fit_resamples(
+  glmn_wf_poly,
+  folds,
+  control = control_resamples(save_pred = TRUE)
+)
+
+cv.metric= glmn_res_poly %>%
+  collect_metrics()
+cv.metric$Model="rr poly"
 cv.all=rbind(cv.all, cv.metric)
 
 #---------------------
@@ -717,6 +760,7 @@ glmn_poly_res <-
 #SVM linear
 #https://stackoverflow.com/questions/62772397/integration-of-variable-importance-plots-within-the-tidy-modelling-framework
 #permutation based
+
 svm_linear_fit <- workflow() %>%
   add_model(svm_linear_spec) %>%
   add_formula(y ~ .) %>%
@@ -727,7 +771,7 @@ svm_linear_vi<-
   pull_workflow_fit() %>%
   vi(method = "permute", 
      target = "y", metric = "rsquared",
-     pred_wrapper = kernlab::predict, train = train, nsim=10)
+     pred_wrapper = kernlab::predict, train = train, nsim=7)
 
 #SVM RBF
 svm_rbf_fit <- workflow() %>%
@@ -740,7 +784,7 @@ svm_rbf_vi<-
   pull_workflow_fit() %>%
   vi(method = "permute", 
      target = "y", metric = "rsquared",
-     pred_wrapper = kernlab::predict, train = train, nsim=10)
+     pred_wrapper = kernlab::predict, train = train, nsim=7)
 
 #RF
 rf_res <-
@@ -764,7 +808,8 @@ mod.vi= mod_res %>%
   unnest(.extracts) 
 
 mod.vi$ImpSign<- mod.vi$Importance
-mod.vi$ImpSign[which(mod.vi$Sign== "NEG")]= mod.vi$ImpSign[which(mod.vi$Sign== "NEG")] * (-1)
+if("Sign" %in% colnames(mod.vi) ) mod.vi$ImpSign[which(mod.vi$Sign== "NEG")]= mod.vi$ImpSign[which(mod.vi$Sign== "NEG")] * (-1)
+if(("Sign" %in% colnames(mod.vi))==FALSE) mod.vi$ImpSign<- NA
 
 mod.vi= mod.vi %>%
 group_by(Variable) %>%
@@ -778,13 +823,15 @@ mod.vi$Model<- mods[mod.k]
 
 if(mod.k==1) vi.mods= mod.vi 
 if(mod.k>1) vi.mods= rbind(vi.mods, mod.vi)
- 
+
+#svm doesn't include signs 
 #add svm
 vi.svm1= as.data.frame(matrix(NA, nrow= nrow(svm_linear_vi),ncol=6))
 names(vi.svm1)= names(vi.mods)
 vi.svm1$Variable= svm_linear_vi$Variable
 vi.svm1$Mean= svm_linear_vi$Importance
 vi.svm1$Variance= svm_linear_vi$StDev
+vi.svm1$Model<- "svm linear"
 vi.mods= rbind(vi.mods, vi.svm1)
 
 vi.svm1= as.data.frame(matrix(NA, nrow= nrow(svm_rbf_vi),ncol=6))
@@ -792,6 +839,7 @@ names(vi.svm1)= names(vi.mods)
 vi.svm1$Variable= svm_rbf_vi$Variable
 vi.svm1$Mean= svm_rbf_vi$Importance
 vi.svm1$Variance= svm_rbf_vi$StDev
+vi.svm1$Model<- "svm rbf"
 vi.mods= rbind(vi.mods, vi.svm1)
 }  #end loop models
 
@@ -813,49 +861,125 @@ if(dat.k>1){
 
 #=============================
 #PLOTS
-
 #RMSE plot
-cv.plot= ggplot(cv.dat) + aes(y=mean, x = Model)+geom_point(size=2)+ #geom_line()+
-  facet_grid(.metric~dataset, scales="free_y")
+
+#scale to max value
+cv.dat= as.data.frame(cv.dat)
+
+cv.max= cv.dat %>%
+  group_by(dataset, .metric) %>%
+  summarize(max.mean=max(mean))
+cv.max= as.data.frame(cv.max)
+
+cv.dat$dat_mod= paste(cv.dat$dataset, cv.dat$.metric,sep="_")
+cv.max$dat_mod= paste(cv.max$dataset, cv.max$.metric,sep="_")
+
+match1= match(cv.dat$dat_mod, cv.max$dat_mod)
+cv.dat$MeanScale= cv.dat$mean/cv.max$max.mean[match1]
+cv.dat$SterrScale= cv.dat$std_err/cv.max$max.mean[match1]
+
+#scale 
+cv.dat$MeanScale[which(cv.dat$.metric=="rsq")]= cv.dat$mean[which(cv.dat$.metric=="rsq")]
+cv.dat$SterrScale[which(cv.dat$.metric=="rsq")]= cv.dat$std_err[which(cv.dat$.metric=="rsq")]
+
+#order models
+cv.dat$Model= factor(cv.dat$Model, levels=c("lm","lm poly", "rr", "rr poly", "svm linear", "svm rbf", "rf"), ordered=TRUE)
+#order datasets
+cv.dat$dataset= factor(cv.dat$dataset, levels=c("plants","eplants", "lep", "fish", "bird", "mammals"), ordered=TRUE)
+
+#plot
+cv.plot= ggplot(cv.dat) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom_line()+
+  facet_grid(.metric~dataset, scales="free_y")+theme_bw()
 
 cv.plot= cv.plot + 
-  geom_errorbar(data=cv.dat, aes(x=Model, y=mean, ymin=mean-std_err, ymax=mean+std_err), width=0, col="black")
+  geom_errorbar(data=cv.dat, aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
-pdf("CvPlot.pdf",height = 8, width = 8)
+pdf("CvPlot.pdf",height = 6, width = 15)
 cv.plot
 dev.off()
   
 #------------------
 #VI plots with cross validation
 
-#code by scale
-vi.dat$RF=0
-vi.dat$RF[vi.dat$Model %in% c("rf")]=1
+#scale to max value
+vi.dat2= as.data.frame(vi.dat)
 
-vi.plot= ggplot(vi.dat) + aes(y=Mean, x = Variable, color=Model, group=Model)+geom_point()+geom_line()+
-  facet_grid(RF~dataset, scales="free_y") + theme(axis.text.x = element_text(angle=90))
+vi.max= vi.dat2 %>%
+group_by(dataset, Model) %>%
+summarize(max.mean=max(Mean),
+          max.mean.sign=max(Mean.sign))
+vi.max= as.data.frame(vi.max)
+
+vi.dat2$dat_mod= paste(vi.dat$dataset, vi.dat$Model,sep="_")
+vi.max$dat_mod= paste(vi.max$dataset, vi.max$Model,sep="_")
+
+match1= match(vi.dat2$dat_mod, vi.max$dat_mod)
+vi.dat2$MeanScale= vi.dat2$Mean/vi.max$max.mean[match1]
+vi.dat2$StdevScale= vi.dat2$Variance/vi.max$max.mean[match1]
+vi.dat2$MeanScale.sign= vi.dat2$Mean.sign/vi.max$max.mean.sign[match1]
+vi.dat2$StdevScale.sign= vi.dat2$Variance.sign/vi.max$max.mean.sign[match1]
+  
+#average importance across models
+vi.mean= vi.dat2 %>%
+  group_by(dataset, Variable) %>%
+  summarize(MeanImp= mean(MeanScale),
+            MeanImp.sign= mean(MeanScale.sign))
+vi.mean= as.data.frame(vi.mean)
+vi.mean$Model= "mean"
+
+#append mean data
+vi.mean.add= vi.dat2[1:nrow(vi.mean),]
+vi.mean.add[]= NA
+vi.mean.add[,c("dataset","Variable","MeanScale","MeanScale.sign","Model")]= vi.mean[,c("dataset","Variable","MeanImp","MeanImp.sign","Model")]
+vi.dat2= rbind(vi.dat2, vi.mean.add)
+#code mean
+vi.dat2$IsMeanImp="N"
+vi.dat2$IsMeanImp[which(vi.dat2$Model=="mean")]="Y"
+
+#order datasets
+vi.dat2$dataset= factor(vi.dat2$dataset, levels=c("plants","eplants", "lep", "fish", "bird", "mammals"), ordered=TRUE)
+
+vi.plot= ggplot(vi.dat2) + aes(y=MeanScale, x = Variable, color=Model, group=Model)+geom_point()+geom_line()+
+  facet_grid(.~dataset, scales="free_y") + theme(axis.text.x = element_text(angle=90))
 
 #split by dataset and split
 library(patchwork)
 vi.plots <- vector('list', length(datasets))
+vi.plots.sign <- vector('list', length(datasets))
 
 for(dat.k in 1:6){
-  vi.plot= ggplot(vi.dat[vi.dat$dataset==datasets[dat.k],]) + aes(y=Mean, x = Variable, color=Model, group=Model)+geom_point(size=2)+geom_line()+
-    facet_grid(.~RF, scales="free")+ggtitle(datasets[dat.k])
+  vi.plot= ggplot(vi.dat2[vi.dat2$dataset==datasets[dat.k],]) + aes(y=MeanScale, x = Variable, color=Model, group=Model, lty=IsMeanImp)+geom_point(size=2)+geom_line()+
+    #facet_grid(.~RF, scales="free")+
+    ggtitle(datasets[dat.k])+theme_bw()
   
-  vi.plot= vi.plot + 
-    geom_errorbar(data=vi.dat[vi.dat$dataset==datasets[dat.k],], aes(y=Mean, x = Variable, ymin=Mean-Variance, ymax=Mean+Variance), width=0, col="black")
+  #vi.plot= vi.plot + 
+  #  geom_errorbar(data=vi.dat2[vi.dat2$dataset==datasets[dat.k],], aes(y=MeanScale, x = Variable, ymin=MeanScale-StdevScale, ymax=MeanScale+StdevScale), width=0, col="black")
   
   if(dat.k<6) vi.plot=vi.plot + theme(legend.position = "none")
   vi.plots[[dat.k]]= vi.plot+ coord_flip()
   
+  #account for sign
+  vi.plot= ggplot(vi.dat2[vi.dat2$dataset==datasets[dat.k],]) + aes(y=MeanScale.sign, x = Variable, color=Model, group=Model, lty=IsMeanImp)+geom_point(size=2)+geom_line()+
+    #facet_grid(.~RF, scales="free")+
+    ggtitle(datasets[dat.k])+theme_bw()
+  
+  #vi.plot= vi.plot + 
+  #  geom_errorbar(data=vi.dat2[vi.dat2$dataset==datasets[dat.k],], aes(y=MeanScale, x = Variable, ymin=MeanScale-StdevScale, ymax=MeanScale+StdevScale), width=0, col="black")
+  
+  if(dat.k<6) vi.plot=vi.plot + theme(legend.position = "none")
+  vi.plots.sign[[dat.k]]= vi.plot+ coord_flip()
 }
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
 pdf("ViPlotsCV.pdf",height = 8, width = 14)
 (vi.plots[[1]] | vi.plots[[2]] | vi.plots[[3]])/
   (vi.plots[[4]] | vi.plots[[5]] | vi.plots[[6]])
+dev.off()
+
+pdf("ViPlotsCV_sign.pdf",height = 8, width = 14)
+(vi.plots.sign[[1]] | vi.plots.sign[[2]] | vi.plots.sign[[3]])/
+  (vi.plots.sign[[4]] | vi.plots.sign[[5]] | vi.plots.sign[[6]])
 dev.off()
 
 #===============================
