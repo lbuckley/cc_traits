@@ -21,7 +21,7 @@ fish= read.csv("west-coast-triennial _species_generaltraits.csv")
 eplants= read.csv("rumpf_ShiftsTraitsBuckley_20180418.csv")
 lepbird= read.csv("Data_Shifts_NicheMetrics_Traits.csv")
 
-datasets= c("plants","eplants", "lep", "fish", "bird", "mammals")
+datasets= c("plants","eplants", "lep", "fish", "birds", "mammals")
 
 #----
 #Process data
@@ -38,7 +38,12 @@ mammals$DailyRhythm=0
 mammals$DailyRhythm[mammals$Daily_rhythm=="both"]=1
 
 #restrict traits
-mammals=mammals[,c("Taxon","High_change","Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DietBreadth","DailyRhythm","AnnualRhythm")]
+mammals=mammals[,c("Taxon","High_change","Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DietBreadth","Bio1_mean","Bio1_std")]
+#drop daily and anual rhythm due to spread "DailyRhythm","AnnualRhythm",
+
+#log transform range size and mass
+mammals$Mass_g= log(mammals$Mass_g)
+mammals$Rangesize_km2= log(mammals$Rangesize_km2)
 
 #check correlations
 r <- cor(mammals[,c(3:10)], use="complete.obs")
@@ -49,35 +54,26 @@ mammals.l<- mammals %>%
   gather("trait", "value", 3:ncol(mammals))
 
 ## Facet labels
-trait.labs <- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","Range size (km2)","Mass (g)","Daily rhythm","Annual rhythm","Diet breadth")
-names(trait.labs) <- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DailyRhythm","AnnualRhythm","DietBreadth")
-
-#drop daily and anual rhythm due to spead
-mammals=mammals[,-c("DailyRhythm","AnnualRhythm")]
-#log transform range size and mass
-mammals$Mass_g= log(mammals$Mass_g)
-mammals$Rangesize_km2= log(mammals$Rangesize_km2)
+trait.labs <- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","log Range size (km2)","log Mass (g)","Daily rhythm","Annual rhythm","Diet breadth","Temp mean","Temp breadth")
+names(trait.labs) <- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DailyRhythm","AnnualRhythm","DietBreadth","Bio1_mean","Bio1_std")
 
 #plot
-plot.m= ggplot(mammals.l) + aes(x=value, y = High_change)+geom_point()+
+plot.mammal= ggplot(mammals.l) + aes(x=value, y = High_change)+geom_point()+
   facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) + 
   ggtitle('Mammals')+
   theme_bw()+ylab("Elevation shift (m)") #+stat_smooth(method='lm', formula= y~poly(x,2))
 #+geom_smooth(se=FALSE) #+scale_x_log10()
 
-#scale
-mammals$Orig_high_limit= scale(mammals$Orig_high_limit)
-mammals$Rangesize_km2= scale(mammals$Rangesize_km2)
-mammals$Mass_g= scale(mammals$Mass_g)
-mammals$Young_per_yr= scale(mammals$Young_per_yr)
+#scale and center
+mammals <- mammals %>%
+  mutate(Orig_high_limit = scale(Orig_high_limit),
+         Mass_g = scale(Mass_g),
+         Bio1_mean = scale(Bio1_mean),
+         Bio1_std = scale(Bio1_std),
+         Rangesize_km2 = scale(Rangesize_km2))
 
-#mod
-mod1= lm(High_change~Orig_high_limit+Longevity_yrs+Bio1_std+Litters_per_yr+Young_per_yr+Rangesize_km2+Mass_g+Daily_rhythm_code+Annual_rhythm_code, data=mammals)
-#mod1= lm(High_change~poly(Orig_high_limit)+poly(Longevity_yrs)+poly(Bio1_std)+poly(Litters_per_yr)+poly(Young_per_yr)+poly(Rangesize_km2)+poly(Mass_g)+poly(Daily_rhythm_code)+poly(Annual_rhythm_code), data=mammals)
-mod1= lm(High_change~poly(Orig_high_limit)*poly(Longevity_yrs), data=mammals)
-
-#plot model
-plot_model(mod1, type="pred", terms=c("Orig_high_limit"), show.data=TRUE)
+#make factors
+mammals$DietBreadth= factor(mammals$DietBreadth, ordered=TRUE)
 
 #----
 #alpine plants
@@ -92,7 +88,6 @@ plants=plants[,c("Taxon","migration_m","earliest_seed_shed_mo","seed_shed_dur_mo
                  "nichebreadth_num_flor_zones", "BreedSysCode",
                  "Ave_seed_shed_ht_m","flwr_dur_mos","DispersalMode",
                  "diaspore_mass_mg","nichebreadth_amplit_ocean","Nbound_lat_GBIF_nosyn")]
-
 
 #restrict variables to increase datasets
 plants=plants[,c("Taxon","migration_m","earliest_seed_shed_mo","seed_shed_dur_mos",
@@ -117,27 +112,16 @@ names(trait.labs) <- c("earliest_seed_shed_mo","seed_shed_dur_mos",
                        "diaspore_mass_mg","nichebreadth_amplit_ocean","Nbound_lat_GBIF_nosyn")
 
 #plot  
-plot.ap= ggplot(plants.l) + aes(x=value, y = migration_m)+geom_point()+
+plot.aplants= ggplot(plants.l) + aes(x=value, y = migration_m)+geom_point()+
   facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Alpine plants') +
   theme_bw()+ylab("Elevation shift (m)") #+ stat_smooth(method='lm', formula= y~poly(x,2))
 #+scale_x_log10()
 
-#mod
-#scale
-plants$diaspore_ave_len_mm= scale(plants$diaspore_ave_len_mm)
-plants$diaspore_min_len_mm = scale(plants$diaspore_min_len_mm)
-plants$diaspore_mass_mg = scale(plants$diaspore_mass_mg)
-plants$MaxAlt = scale(plants$MaxAlt)
-plants$seed_mass_mg = scale(plants$seed_mass_mg)
-
-mod1= lm(migration_m~earliest_seed_shed_mo+latest_seed_shed_mo+seed_shed_dur_mos+nichebreadth_num_flor_zones+             
-           diaspore_min_len_mm+BreedSysCode+diaspore_ave_len_mm+MaxAlt+seed_mass_mg+oceanity+Min_seed_shed_ht_m+
-           flwr_mo_end+dispmode01+flwr_mo_start+diaspore_mass_mg+nichebreadth_amplit_ocean+  
-           StorageOrgan+Max_seed_shed_ht_m, data=plants)
-
-#plot model
-plot_model(mod1, type="pred", terms=c("seed_mass_mg"), show.data=TRUE)
-plot_model(mod1, type="pred", terms=c("diaspore_mass_mg"), show.data=TRUE)
+#scale and center
+plants <- plants %>%
+  mutate(earliest_seed_shed_mo = scale(earliest_seed_shed_mo),
+         seed_shed_dur_mos = scale(seed_shed_dur_mos),
+         Nbound_lat_GBIF_nosyn = scale(Nbound_lat_GBIF_nosyn))
 
 #----
 #fish
@@ -147,10 +131,14 @@ fish$WaterType=0
 fish$WaterType[fish$Brack== -1]=1
 fish$WaterType[fish$Fresh== -1]=2
 
+#log transform
+fish$DepthRangeDeep= log(fish$DepthRangeDeep)
+fish$Length= log(fish$Length)
+
 #compress habitats
-#finalize how to code
 fish$habitat= as.numeric(factor(fish$DemersPelag, 
                                 levels=c("bathydemersal","demersal","benthopelagic","pelagic-oceanic","pelagic-neritic","reef-associated")))
+fish$habitat[fish$habitat>3]<-3 #group pelagic habitats
 
 #restrict traits
 fish=fish[,c("Species","Latitudinal.Difference","habitat","DepthRangeDeep","Length","WaterType","Vulnerability")]
@@ -161,25 +149,40 @@ fish.l<- fish %>%
   gather("trait", "value", 3:ncol(fish))
 
 # Facet labels
-trait.labs <- c("Habitat","Depth Range (?)","Length (?)","Vulnerability","Water Type")
+trait.labs <- c("Habitat","log Depth Range (?)","log Length (?)","Vulnerability","Water Type")
 names(trait.labs) <- c("habitat","DepthRangeDeep","Length","Vulnerability","WaterType")
 
 #plot
-plot.tms= ggplot(fish.l) + aes(x=value, y = Latitudinal.Difference)+geom_point()+
+plot.fish= ggplot(fish.l) + aes(x=value, y = Latitudinal.Difference)+geom_point()+
   facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Triennial marine survey') +
   theme_bw()+ylab("Latitudinal shift (°)") #+stat_smooth(method='lm', formula= y~poly(x,2))
 
+#scale and center
+fish <- fish %>%
+  mutate(DepthRangeDeep = scale(DepthRangeDeep),
+         Length = scale(Length),
+         Vulnerability = scale(Vulnerability))
+
+#make factors
+fish$habitat= factor(fish$habitat, ordered=TRUE)
+fish$WaterType= factor(fish$WaterType, ordered=TRUE)
+
 #----
 #European plants
+#https://www.pnas.org/doi/abs/10.1073/pnas.1713936115
 
 #to numeric
 #Check codes: (1) C-competitors, (2) S-stress tolerators, and (3) R-ruderals.
 ls.codes=c("ccc","ccs","css","crs","sss","rss","rrs") 
 eplants$LifeStrategy= match(eplants$LifeStrategy, ls.codes)
 
+#log transform
+eplants$LifeSpan= log(eplants$LifeSpan)
+eplants$SeedReleaseHeight= log(eplants$SeedReleaseHeight)
+
 #restrict traits
-#eplants=eplants[,c("speciesname","LeadingEdge","TemperatureIndicator","NutrientIndicator","Dispersal","Persistence")]
-eplants=eplants[,c("speciesname","LeadingEdge","TemperatureIndicator","NutrientIndicator","RetInFurSheep","GutSurvival","SeedReleaseHeight","LifeStrategy","LifeSpan","NoOfVegOffspings","Dispersal","Persistence")]
+#eplants=eplants[,c("speciesname","LeadingEdge","TemperatureIndicator","NutrientIndicator","Dispersal","Persistence","RetInFurSheep","GutSurvival")]
+eplants=eplants[,c("speciesname","LeadingEdge","TemperatureIndicator","NutrientIndicator","SeedReleaseHeight","LifeStrategy","LifeSpan","NoOfVegOffspings","Dispersal","Persistence")]
 #Look into adding Historic position, Historical optimum
 
 #check correlations
@@ -195,26 +198,39 @@ trait.labs <- c("Temperature Indicator","Nutrient Indicator","Sheep Fur Retentio
 names(trait.labs) <- c("TemperatureIndicator","NutrientIndicator","RetInFurSheep","GutSurvival","SeedReleaseHeight","LifeStrategy","LifeSpan","NoOfVegOffspings","Dispersal","Persistence")
 
 #plot
-plot.ep= ggplot(eplants.l) + aes(x=value, y = LeadingEdge)+geom_point()+
+plot.eplants= ggplot(eplants.l) + aes(x=value, y = LeadingEdge)+geom_point()+
   facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('European plants') +
   theme_bw()+ylab("Elevational shift (m)") #+stat_smooth(method='lm', formula= y~poly(x,2))
 #check LeadingEdge, Optimum, RearEdge
 
-mod1= lm(LeadingEdge~RelativeAbundance+TemperatureIndicator+NutrientIndicator+TerminalVelocity+
-           RetInFurCattle+RetInFurSheep+GutSurvival+SeedReleaseHeight+Dispersal+
-           LifeStrategy+LifeSpan+Dominance+NoOfVegOffspings+Persistence, data=eplants)
+#scale and center
+eplants <- eplants %>%
+  mutate(Dispersal = scale(Dispersal),
+         LifeSpan = scale(LifeSpan),
+         NoOfVegOffspings = scale(NoOfVegOffspings),
+         Persistence = scale(Persistence),
+         SeedReleaseHeight = scale(SeedReleaseHeight) )
 
-Anova(mod1, type=3)
+#make factors
+eplants$LifeStrategy= factor(eplants$LifeStrategy, ordered=TRUE)
+eplants$NutrientIndicator= factor(eplants$NutrientIndicator, ordered=TRUE)
+eplants$TemperatureIndicator= factor(eplants$TemperatureIndicator, ordered=TRUE)
 
 #----
 #Add lepidoptera and birds
+# https://academic.oup.com/evlett/advance-article/doi/10.1093/evlett/qrad004/7076361
+# Moth: move further N with bigger temp mean and and narrower breath
+# Bird: move further N with narrowed temp breadth and resident wintering
+# Butterfly: no strong predictors
 
 #restrict traits
 lepbird= lepbird[,c("Species","Taxonomic.group","D_border_0.9",
-                    "range.size","wintering","body.size","num.gen")]
+                    "temp.mean","temp.sd","precip.mean","wintering","body.size","num.gen")] #"precip.sd",
 
 #split moths and birds
-lep= lepbird[lepbird$Taxonomic.group %in% c("Moth","Butterfly"),]
+#moth= lepbird[lepbird$Taxonomic.group %in% c("Moth"),]
+#butterfly= lepbird[lepbird$Taxonomic.group %in% c("Butterfly"),]
+lep= lepbird[lepbird$Taxonomic.group %in% c("Moth", "Butterfly"),]
 bird=  lepbird[lepbird$Taxonomic.group == "Bird",]
 
 #Code overwintering stage
@@ -224,10 +240,10 @@ lep$wintering= match(lep$wintering, wint.stage)
 #bird, resident; short-distance migrant, and long-distance migrant
 bird.stage= c("R","S","L")
 bird$wintering= match(bird$wintering, bird.stage)  
-           
+
 #check correlations
-r <- cor(lep[,c(3:7)], use="complete.obs")
-r <- cor(bird[,c(3:7)], use="complete.obs")
+r <- cor(lep[,c(4:6,8)], use="complete.obs")
+r <- cor(bird[,c(4:6,8)], use="complete.obs")
 ggcorrplot(r)
 
 #to long
@@ -237,17 +253,23 @@ bird.l<- bird %>%
   gather("trait", "value", 4:ncol(bird))
 
 # Facet labels
-trait.labs <- c("Range Size","Wintering","Body size","Number Generations") 
-names(trait.labs) <- c("range.size","wintering","body.size","num.gen")  
+trait.labs <- c("Range Size","Wintering","Body size","Number Generations","Temp Mean","Temp Breadth","Moisture Mean") 
+names(trait.labs) <- c("range.size","wintering","body.size","num.gen","temp.mean","temp.sd","precip.mean")  
 
 #plot
 plot.lep= ggplot(lep.l) + aes(x=value, y = D_border_0.9)+geom_point()+
-  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Lep') +
-  theme_bw()+ylab(" shift (X)") 
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Lepidopterans') +
+  theme_bw()+ylab(" shift (degree)") 
 
 plot.bird= ggplot(bird.l) + aes(x=value, y = D_border_0.9)+geom_point()+
   facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Birds') +
-  theme_bw()+ylab(" shift (X)") 
+  theme_bw()+ylab(" shift (degree)") 
+
+#set up ordered factors
+bird$num.gen= factor(bird$num.gen, ordered=TRUE)
+lep$num.gen= factor(lep$num.gen, ordered=TRUE)
+bird$wintering= factor(bird$wintering, ordered=TRUE)
+lep$wintering= factor(lep$wintering, ordered=TRUE)
 
 #===================================
 #Models
@@ -281,11 +303,6 @@ if(dat.k==1){
   dat$y= dat$High_change
   #drop ID rows
   dat<- dat[,3:ncol(dat)]
-  
-  #set up ordered factors
-  dat$DietBreadth= factor(dat$DietBreadth)
-  dat$DailyRhythm= factor(dat$DailyRhythm)
-  dat$AnnualRhythm= factor(dat$AnnualRhythm)
 }
 
 if(dat.k==2){
@@ -295,16 +312,6 @@ if(dat.k==2){
   dat$y= dat$migration_m
   #drop ID rows
   dat<- dat[,3:ncol(dat)]
-  
-  #preds <-  c("earliest_seed_shed_mo","seed_shed_dur_mos","nichebreadth_num_flor_zones","BreedSysCode","Ave_seed_shed_ht_m",
-  #            "flwr_dur_mos","DispersalMode","diaspore_mass_mg","nichebreadth_amplit_ocean","Nbound_lat_GBIF_nosyn")
-  #predictors to consider as polynomials
-  #preds.poly <-  c("earliest_seed_shed_mo","seed_shed_dur_mos","nichebreadth_num_flor_zones","Ave_seed_shed_ht_m",
-  #                 "flwr_dur_mos","diaspore_mass_mg","Nbound_lat_GBIF_nosyn")
-  
-  #set up ordered factors
-  dat$BreedSysCode= factor(dat$BreedSysCode, ordered=TRUE)
-  dat$DispersalMode= factor(dat$DispersalMode)
 }
 
 if(dat.k==3){
@@ -314,10 +321,6 @@ if(dat.k==3){
   dat$y= dat$Latitudinal.Difference
   #drop ID rows
   dat<- dat[,3:ncol(dat)]
-  
-  #set up ordered factors
-  dat$habitat= factor(dat$habitat, ordered=TRUE)
-  dat$WaterType= factor(dat$WaterType, ordered=TRUE)
 }
 
 if(dat.k==4){
@@ -327,11 +330,6 @@ if(dat.k==4){
   dat$y= dat$LeadingEdge
   #drop ID rows
   dat<- dat[,3:ncol(dat)]
-  
-  #set up ordered factors
- # dat$TemperatureIndicator= factor(dat$TemperatureIndicator, ordered=TRUE)
- #  dat$NutrientIndicator= factor(dat$NutrientIndicator, ordered=TRUE)
- #  dat$LifeStrategy= factor(dat$LifeStrategy, ordered=TRUE)
 }
 
 if(dat.k==5){
@@ -341,11 +339,7 @@ if(dat.k==5){
   dat$y= dat$D_border_0.9
   #drop ID rows
   dat<- dat[,4:ncol(dat)]
-  
-  #set up ordered factors
-  dat$wintering= factor(dat$wintering, ordered=TRUE)
-  dat$num.gen= factor(dat$num.gen)
-}
+ }
 
 if(dat.k==6){
   #BIRDS
@@ -354,13 +348,12 @@ if(dat.k==6){
   dat$y= dat$D_border_0.9
   #drop ID rows
   dat<- dat[,4:ncol(dat)]
-  
-  #set up ordered factors
-  dat$wintering= factor(dat$wintering, ordered=TRUE)
-  dat$num.gen= factor(dat$num.gen)
 }
 
 #-------------------
+#drop NA
+dat<- na.omit(dat)
+  
 #split the data
 # Split data into 70% for training and 30% for testing
 set.seed(2056)
@@ -371,7 +364,7 @@ dat_split <- dat %>%
 train <- training(dat_split)
 test <- testing(dat_split)
 
-train<- na.omit(train)
+#train<- na.omit(train)
 
 #-----
 #OLS
@@ -399,39 +392,34 @@ lm_fit <-
 
 if(dat.k==1){
   rec_poly <- recipe(y ~ ., data = train) %>%
-    step_center(all_numeric_predictors())%>%
-    step_normalize(all_numeric_predictors()) #%>%
-   # step_poly(Orig_high_limit,Rangesize_km2, Mass_g, degree = 2) #Orig_high_limit,Rangesize_km2, Mass_g,
-}
+    #step_poly(Orig_high_limit, degree = 2) %>% #Orig_high_limit,Rangesize_km2, Mass_g,
+    step_ordinalscore(DietBreadth)
+  }
 
 if(dat.k==2){
-  rec_poly <- recipe(y ~ ., data = train) %>%
-    step_center(all_numeric_predictors())%>%
-    step_normalize(all_numeric_predictors())%>%
-    step_poly(Nbound_lat_GBIF_nosyn, degree = 2)
+  rec_poly <- recipe(y ~ ., data = train) #%>%
+    #step_poly(earliest_seed_shed_mo, degree = 2) #%>%
     #step_poly(earliest_seed_shed_mo,seed_shed_dur_mos,nichebreadth_num_flor_zones,
     #          Ave_seed_shed_ht_m,diaspore_mass_mg,Nbound_lat_GBIF_nosyn, degree = 2)
+    #step_ordinalscore(BreedSysCode, DispersalMode)
 }
 
 if(dat.k==3){
-  rec_poly <- recipe(y ~ ., data = train) %>%
-    step_center(all_numeric_predictors())%>%
-    step_normalize(all_numeric_predictors())%>%
-    step_poly(DepthRangeDeep, Length, Vulnerability, degree = 2)
+  rec_poly <- recipe(y ~ ., data = train) #%>%
+  #  step_poly(DepthRangeDeep, degree = 2) %>% #DepthRangeDeep, Length, Vulnerability, 
+  #  step_ordinalscore(habitat,WaterType)
 }
 
 if(dat.k==4){
   rec_poly <- recipe(y ~ ., data = train) %>%
-    step_center(all_numeric_predictors())%>%
-    step_normalize(all_numeric_predictors())%>%
-    step_poly(SeedReleaseHeight,LifeSpan,Dispersal,Persistence, degree = 2)
+#    step_poly(SeedReleaseHeight, degree = 2) %>% #SeedReleaseHeight,LifeSpan,Dispersal,Persistence
+    step_ordinalscore(TemperatureIndicator,NutrientIndicator,LifeStrategy)
 }
 
 if(dat.k %in% c(5,6)){
   rec_poly <- recipe(y ~ ., data = train) %>%
-    step_center(all_numeric_predictors())%>%
-    step_normalize(all_numeric_predictors())%>%
-    step_poly(range.size,body.size, degree = 2)
+    step_poly(body.size, degree = 2) %>%
+    step_ordinalscore(wintering,num.gen)
 }
 
 #https://hansjoerg.me/2020/02/09/tidymodels-for-machine-learning/
@@ -447,7 +435,7 @@ lm_wf_poly <-
   add_recipe(rec_poly)
 
 lm_fit_poly <- lm_wf_poly %>%
-  fit(data=na.omit(train))
+  fit(data=train)
 
 #Fit
 #lm_fit_poly <- fit(lm_spec_poly, y ~ ., train_poly)
@@ -473,44 +461,34 @@ glmn_wf <-
 #Ridge poly
 if(dat.k==1){
   rec_glmn_poly <- recipe(y ~ ., data = train) %>%
-    step_center(all_numeric_predictors())%>%
-    step_normalize(all_numeric_predictors())%>%
-    #step_poly(Orig_high_limit, Rangesize_km2, Mass_g, degree = 2)%>%
+   # step_poly(Rangesize_km2, degree = 2)%>% #Orig_high_limit, Rangesize_km2, Mass_g,
     #step_ordinalscore(all_factor())
-    step_ordinalscore(DietBreadth,DailyRhythm,AnnualRhythm)
+    step_ordinalscore(DietBreadth)
 }
 
 if(dat.k==2){
-  rec_glmn_poly <- recipe(y ~ ., data = train) %>%
-    step_center(all_numeric_predictors())%>%
-    step_normalize(all_numeric_predictors())%>%
+  rec_glmn_poly <- recipe(y ~ ., data = train) #%>%
     #step_poly(earliest_seed_shed_mo,seed_shed_dur_mos,nichebreadth_num_flor_zones,
     #          Ave_seed_shed_ht_m,diaspore_mass_mg,Nbound_lat_GBIF_nosyn, degree = 2)%>%
-    step_poly(Nbound_lat_GBIF_nosyn, degree = 2)%>%
-    step_ordinalscore(BreedSysCode, DispersalMode)
+    #step_poly(Nbound_lat_GBIF_nosyn, degree = 2) #%>%
+    #step_ordinalscore(BreedSysCode, DispersalMode)
 }
 
 if(dat.k==3){
   rec_glmn_poly <- recipe(y ~ ., data = train) %>%
-    step_center(all_numeric_predictors())%>%
-    step_normalize(all_numeric_predictors())%>%
-    step_poly(DepthRangeDeep, Length, Vulnerability, degree = 2)%>%
+    #step_poly(DepthRangeDeep, Length, Vulnerability, degree = 2)%>%
     step_ordinalscore(habitat,WaterType)
 }
 
 if(dat.k==4){
   rec_glmn_poly <- recipe(y ~ ., data = train) %>%
-    step_center(all_numeric_predictors())%>%
-    step_normalize(all_numeric_predictors())%>%
-    step_poly(SeedReleaseHeight,LifeSpan,Dispersal,Persistence, degree = 2) #%>%
-   # step_ordinalscore(TemperatureIndicator, NutrientIndicator, LifeStrategy)
+    #step_poly(SeedReleaseHeight,LifeSpan,Dispersal,Persistence, degree = 2) #%>%
+    step_ordinalscore(TemperatureIndicator, NutrientIndicator, LifeStrategy)
 }
 
 if(dat.k %in% c(5,6)){
   rec_glmn_poly <- recipe(y ~ ., data = train) %>%
-    step_center(all_numeric_predictors())%>%
-    step_normalize(all_numeric_predictors())%>%
-    step_poly(range.size,body.size, degree = 2)%>%
+    step_poly(body.size, degree = 2)%>%
     #step_ordinalscore(all_factor())
     step_ordinalscore(wintering, num.gen)
 }
@@ -524,7 +502,7 @@ glmn_wf_poly <-
   add_recipe(rec_glmn_poly)
 
 glmn_fit_poly <- glmn_wf_poly %>%
-  fit(data=na.omit(train))
+  fit(data=train)
 
 #----
 #Kernel regression
@@ -829,16 +807,20 @@ if(mod.k>1) vi.mods= rbind(vi.mods, mod.vi)
 vi.svm1= as.data.frame(matrix(NA, nrow= nrow(svm_linear_vi),ncol=6))
 names(vi.svm1)= names(vi.mods)
 vi.svm1$Variable= svm_linear_vi$Variable
-vi.svm1$Mean= svm_linear_vi$Importance
+vi.svm1$Mean= abs(svm_linear_vi$Importance)
 vi.svm1$Variance= svm_linear_vi$StDev
+vi.svm1$Mean.sign= svm_linear_vi$Importance
+vi.svm1$Variance.sign= svm_linear_vi$StDev
 vi.svm1$Model<- "svm linear"
 vi.mods= rbind(vi.mods, vi.svm1)
 
 vi.svm1= as.data.frame(matrix(NA, nrow= nrow(svm_rbf_vi),ncol=6))
 names(vi.svm1)= names(vi.mods)
 vi.svm1$Variable= svm_rbf_vi$Variable
-vi.svm1$Mean= svm_rbf_vi$Importance
-vi.svm1$Variance= svm_rbf_vi$StDev
+vi.svm1$Mean= abs(svm_linear_vi$Importance)
+vi.svm1$Variance= svm_linear_vi$StDev
+vi.svm1$Mean.sign= svm_linear_vi$Importance
+vi.svm1$Variance.sign= svm_linear_vi$StDev
 vi.svm1$Model<- "svm rbf"
 vi.mods= rbind(vi.mods, vi.svm1)
 }  #end loop models
@@ -861,6 +843,19 @@ if(dat.k>1){
 
 #=============================
 #PLOTS
+#setwd for figures
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
+
+#Trait plots
+pdf("Fig0_alltraits.pdf", onefile = TRUE)
+print(plot.aplants)
+print(plot.eplants)
+print(plot.lep)
+print(plot.fish)
+print(plot.bird)
+print(plot.mammal)
+dev.off()
+
 #RMSE plot
 
 #scale to max value
@@ -885,7 +880,7 @@ cv.dat$SterrScale[which(cv.dat$.metric=="rsq")]= cv.dat$std_err[which(cv.dat$.me
 #order models
 cv.dat$Model= factor(cv.dat$Model, levels=c("lm","lm poly", "rr", "rr poly", "svm linear", "svm rbf", "rf"), ordered=TRUE)
 #order datasets
-cv.dat$dataset= factor(cv.dat$dataset, levels=c("plants","eplants", "lep", "fish", "bird", "mammals"), ordered=TRUE)
+cv.dat$dataset= factor(cv.dat$dataset, levels=c("plants","eplants", "lep", "fish", "birds", "mammals"), ordered=TRUE)
 
 #plot
 cv.plot= ggplot(cv.dat) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom_line()+
@@ -919,7 +914,25 @@ vi.dat2$MeanScale= vi.dat2$Mean/vi.max$max.mean[match1]
 vi.dat2$StdevScale= vi.dat2$Variance/vi.max$max.mean[match1]
 vi.dat2$MeanScale.sign= vi.dat2$Mean.sign/vi.max$max.mean.sign[match1]
 vi.dat2$StdevScale.sign= vi.dat2$Variance.sign/vi.max$max.mean.sign[match1]
-  
+
+#condense to maximum value for factors
+vi.dat2$Variable= gsub("`", "", vi.dat2$Variable)
+
+vi.dat2$Variable= gsub(".L", "", vi.dat2$Variable)
+vi.dat2$Variable= gsub(".Q", "", vi.dat2$Variable)
+vi.dat2$Variable= gsub(".C", "", vi.dat2$Variable)
+vi.dat2$Variable= gsub("^4", "", vi.dat2$Variable)
+vi.dat2$Variable= gsub("^5", "", vi.dat2$Variable)
+vi.dat2$Variable= gsub("^6", "", vi.dat2$Variable)
+
+vi.dat2$Variable[grep("TemperatureIndicator", vi.dat2$Variable, value = FALSE)]<- "TemperatureIndicator"
+vi.dat2$Variable[grep("LifeStrategy", vi.dat2$Variable, value = FALSE)]<- "LifeStrategy"
+
+#reduce to max
+vi.dat2$dat_mod_var= paste(vi.dat2$dat_mod, vi.dat2$Variable, sep="_")
+
+vi.dat.max= aggregate(vi.dat2, by=list(vi.dat2$dat_mod_var), FUN="max")
+
 #average importance across models
 vi.mean= vi.dat2 %>%
   group_by(dataset, Variable) %>%
@@ -937,21 +950,39 @@ vi.dat2= rbind(vi.dat2, vi.mean.add)
 vi.dat2$IsMeanImp="N"
 vi.dat2$IsMeanImp[which(vi.dat2$Model=="mean")]="Y"
 
+#average importance across models for max
+vi.mean= vi.dat.max %>%
+  group_by(dataset, Variable) %>%
+  summarize(MeanImp= mean(MeanScale),
+            MeanImp.sign= mean(MeanScale.sign))
+vi.mean= as.data.frame(vi.mean)
+vi.mean$Model= "mean"
+
+#append mean data
+vi.mean.add= vi.dat.max[1:nrow(vi.mean),]
+vi.mean.add[]= NA
+vi.mean.add[,c("dataset","Variable","MeanScale","MeanScale.sign","Model")]= vi.mean[,c("dataset","Variable","MeanImp","MeanImp.sign","Model")]
+vi.dat.max= rbind(vi.dat.max, vi.mean.add)
+#code mean
+vi.dat.max$IsMeanImp="N"
+vi.dat.max$IsMeanImp[which(vi.dat.max$Model=="mean")]="Y"
+
 #order datasets
-vi.dat2$dataset= factor(vi.dat2$dataset, levels=c("plants","eplants", "lep", "fish", "bird", "mammals"), ordered=TRUE)
+vi.dat2$dataset= factor(vi.dat2$dataset, levels=c("plants","eplants", "lep", "fish", "birds", "mammals"), ordered=TRUE)
 
 vi.plot= ggplot(vi.dat2) + aes(y=MeanScale, x = Variable, color=Model, group=Model)+geom_point()+geom_line()+
   facet_grid(.~dataset, scales="free_y") + theme(axis.text.x = element_text(angle=90))
 
+#---------------------
 #split by dataset and split
 library(patchwork)
 vi.plots <- vector('list', length(datasets))
 vi.plots.sign <- vector('list', length(datasets))
 
 for(dat.k in 1:6){
-  vi.plot= ggplot(vi.dat2[vi.dat2$dataset==datasets[dat.k],]) + aes(y=MeanScale, x = Variable, color=Model, group=Model, lty=IsMeanImp)+geom_point(size=2)+geom_line()+
+  vi.plot= ggplot(vi.dat.max[vi.dat.max$dataset==datasets[dat.k],]) + aes(y=MeanScale, x = Variable, color=Model, group=Model, lty=IsMeanImp)+geom_point(size=2)+geom_line()+
     #facet_grid(.~RF, scales="free")+
-    ggtitle(datasets[dat.k])+theme_bw()
+    ggtitle(datasets[dat.k])+theme_bw()+ylim(0,1)
   
   #vi.plot= vi.plot + 
   #  geom_errorbar(data=vi.dat2[vi.dat2$dataset==datasets[dat.k],], aes(y=MeanScale, x = Variable, ymin=MeanScale-StdevScale, ymax=MeanScale+StdevScale), width=0, col="black")
@@ -962,7 +993,8 @@ for(dat.k in 1:6){
   #account for sign
   vi.plot= ggplot(vi.dat2[vi.dat2$dataset==datasets[dat.k],]) + aes(y=MeanScale.sign, x = Variable, color=Model, group=Model, lty=IsMeanImp)+geom_point(size=2)+geom_line()+
     #facet_grid(.~RF, scales="free")+
-    ggtitle(datasets[dat.k])+theme_bw()
+    ggtitle(datasets[dat.k])+theme_bw()+
+    geom_hline(yintercept = 0, color="gray",lwd=1)
   
   #vi.plot= vi.plot + 
   #  geom_errorbar(data=vi.dat2[vi.dat2$dataset==datasets[dat.k],], aes(y=MeanScale, x = Variable, ymin=MeanScale-StdevScale, ymax=MeanScale+StdevScale), width=0, col="black")
