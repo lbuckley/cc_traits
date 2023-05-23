@@ -12,7 +12,6 @@ library(vip)
 
 #----
 #read data
-
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/data")
 
 mammals= read.csv("mammals01.csv")
@@ -21,7 +20,8 @@ fish= read.csv("west-coast-triennial _species_generaltraits.csv")
 eplants= read.csv("rumpf_ShiftsTraitsBuckley_20180418.csv")
 lepbird= read.csv("Data_Shifts_NicheMetrics_Traits.csv")
 
-datasets= c("plants","eplants", "lep", "fish", "birds", "mammals")
+datasets= c("mammals", "plants","fish", "eplants", "lep", "birds")
+dat.titles= c("montane mammals", "alpine plants","fish", "plants", "lepidoptera", "birds")
 
 #----
 #Process data
@@ -230,7 +230,7 @@ lepbird= lepbird[,c("Species","Taxonomic.group","D_border_0.9",
 #split moths and birds
 #moth= lepbird[lepbird$Taxonomic.group %in% c("Moth"),]
 #butterfly= lepbird[lepbird$Taxonomic.group %in% c("Butterfly"),]
-lep= lepbird[lepbird$Taxonomic.group %in% c("Moth", "Butterfly"),]
+lep= lepbird[lepbird$Taxonomic.group %in% c("Moth"),] #just moths for now: , "Butterfly"
 bird=  lepbird[lepbird$Taxonomic.group == "Bird",]
 
 #Code overwintering stage
@@ -350,10 +350,13 @@ if(dat.k==6){
   dat<- dat[,4:ncol(dat)]
 }
 
+## USE ABSOLUTE VALUE OF SHIFT
+#dat$y= abs(dat$y)
+  
 #-------------------
 #drop NA
 dat<- na.omit(dat)
-  
+
 #split the data
 # Split data into 70% for training and 30% for testing
 set.seed(2056)
@@ -363,8 +366,6 @@ dat_split <- dat %>%
 # Extract the data in each split
 train <- training(dat_split)
 test <- testing(dat_split)
-
-#train<- na.omit(train)
 
 #-----
 #OLS
@@ -392,33 +393,46 @@ lm_fit <-
 
 if(dat.k==1){
   rec_poly <- recipe(y ~ ., data = train) %>%
-    #step_poly(Orig_high_limit, degree = 2) %>% #Orig_high_limit,Rangesize_km2, Mass_g,
+    step_mutate(Orig_high_limit= poly(Orig_high_limit, degree=2)) %>%
+    step_mutate(Rangesize_km2= poly(Rangesize_km2, degree=2)) %>%
+    step_mutate(Mass_g= poly(Mass_g, degree=2)) %>%
+    step_mutate(Bio1_mean= poly(Bio1_mean, degree=2)) %>%
+    step_mutate(Bio1_std= poly(Bio1_std, degree=2)) %>%
+   # step_poly(Orig_high_limit, degree = 2) %>% #Orig_high_limit,Rangesize_km2, Mass_g,
     step_ordinalscore(DietBreadth)
   }
 
 if(dat.k==2){
-  rec_poly <- recipe(y ~ ., data = train) #%>%
-    #step_poly(earliest_seed_shed_mo, degree = 2) #%>%
-    #step_poly(earliest_seed_shed_mo,seed_shed_dur_mos,nichebreadth_num_flor_zones,
-    #          Ave_seed_shed_ht_m,diaspore_mass_mg,Nbound_lat_GBIF_nosyn, degree = 2)
+  rec_poly <- recipe(y ~ earliest_seed_shed_mo + seed_shed_dur_mos + Nbound_lat_GBIF_nosyn, data = train) %>%
+    step_mutate(earliest_seed_shed_mo= poly(earliest_seed_shed_mo, degree=2)) %>%
+    step_mutate(seed_shed_dur_mos= poly(seed_shed_dur_mos, degree=2)) %>%
+    step_mutate(Nbound_lat_GBIF_nosyn= poly(Nbound_lat_GBIF_nosyn, degree=2)) 
+    #step_poly(earliest_seed_shed_mo, seed_shed_dur_mos,  Nbound_lat_GBIF_nosyn) #%>%
     #step_ordinalscore(BreedSysCode, DispersalMode)
 }
 
 if(dat.k==3){
-  rec_poly <- recipe(y ~ ., data = train) #%>%
+  rec_poly <- recipe(y ~ ., data = train) %>%
+    step_mutate(DepthRangeDeep= poly(DepthRangeDeep, degree=2)) %>%
+    step_mutate(Length= poly(Length, degree=2)) %>%
+    step_mutate(Vulnerability= poly(Vulnerability, degree=2)) %>%
   #  step_poly(DepthRangeDeep, degree = 2) %>% #DepthRangeDeep, Length, Vulnerability, 
-  #  step_ordinalscore(habitat,WaterType)
+    step_ordinalscore(habitat,WaterType)
 }
 
 if(dat.k==4){
   rec_poly <- recipe(y ~ ., data = train) %>%
-#    step_poly(SeedReleaseHeight, degree = 2) %>% #SeedReleaseHeight,LifeSpan,Dispersal,Persistence
+    step_mutate(SeedReleaseHeight= poly(SeedReleaseHeight, degree=2)) %>%
+    step_mutate(LifeSpan= poly(LifeSpan, degree=2)) %>%
+    step_mutate(Dispersal= poly(Dispersal, degree=2)) %>%
+    step_mutate(Persistence= poly(Persistence, degree=2)) %>%
+    #step_poly(Persistence, degree=1) %>% #SeedReleaseHeight,LifeSpan,Dispersal,Persistence
     step_ordinalscore(TemperatureIndicator,NutrientIndicator,LifeStrategy)
 }
 
 if(dat.k %in% c(5,6)){
   rec_poly <- recipe(y ~ ., data = train) %>%
-    step_poly(body.size, degree = 2) %>%
+    step_poly(temp.mean, temp.sd, precip.mean, body.size, degree = 2) %>%
     step_ordinalscore(wintering,num.gen)
 }
 
@@ -436,9 +450,6 @@ lm_wf_poly <-
 
 lm_fit_poly <- lm_wf_poly %>%
   fit(data=train)
-
-#Fit
-#lm_fit_poly <- fit(lm_spec_poly, y ~ ., train_poly)
 
 #----
 # Ridge: “ridge”-regularized linear model
@@ -459,47 +470,13 @@ glmn_wf <-
   add_formula(y ~ .)
 
 #Ridge poly
-if(dat.k==1){
-  rec_glmn_poly <- recipe(y ~ ., data = train) %>%
-   # step_poly(Rangesize_km2, degree = 2)%>% #Orig_high_limit, Rangesize_km2, Mass_g,
-    #step_ordinalscore(all_factor())
-    step_ordinalscore(DietBreadth)
-}
-
-if(dat.k==2){
-  rec_glmn_poly <- recipe(y ~ ., data = train) #%>%
-    #step_poly(earliest_seed_shed_mo,seed_shed_dur_mos,nichebreadth_num_flor_zones,
-    #          Ave_seed_shed_ht_m,diaspore_mass_mg,Nbound_lat_GBIF_nosyn, degree = 2)%>%
-    #step_poly(Nbound_lat_GBIF_nosyn, degree = 2) #%>%
-    #step_ordinalscore(BreedSysCode, DispersalMode)
-}
-
-if(dat.k==3){
-  rec_glmn_poly <- recipe(y ~ ., data = train) %>%
-    #step_poly(DepthRangeDeep, Length, Vulnerability, degree = 2)%>%
-    step_ordinalscore(habitat,WaterType)
-}
-
-if(dat.k==4){
-  rec_glmn_poly <- recipe(y ~ ., data = train) %>%
-    #step_poly(SeedReleaseHeight,LifeSpan,Dispersal,Persistence, degree = 2) #%>%
-    step_ordinalscore(TemperatureIndicator, NutrientIndicator, LifeStrategy)
-}
-
-if(dat.k %in% c(5,6)){
-  rec_glmn_poly <- recipe(y ~ ., data = train) %>%
-    step_poly(body.size, degree = 2)%>%
-    #step_ordinalscore(all_factor())
-    step_ordinalscore(wintering, num.gen)
-}
-
 glmn_spec_poly <- linear_reg(penalty = 0.001, mixture = 0.5) %>%
   set_engine(engine = "glmnet")
 
 glmn_wf_poly <- 
   workflow() %>%
   add_model(glmn_spec_poly) %>%
-  add_recipe(rec_glmn_poly)
+  add_recipe(rec_poly)
 
 glmn_fit_poly <- glmn_wf_poly %>%
   fit(data=train)
@@ -723,7 +700,9 @@ lm_res <-
   fit_resamples(folds, control = ctrl_imp)
 
 lm_poly_res <-
-  workflow(y ~ ., lm_spec_poly) %>%
+  workflow() %>%
+  add_model(lm_spec_poly) %>%
+  add_recipe(rec_poly) %>%
   fit_resamples(folds, control = ctrl_imp)
 
 #RR
@@ -732,7 +711,9 @@ glmn_res <-
   fit_resamples(folds, control = ctrl_imp)
 
 glmn_poly_res <-
-  workflow(y ~ ., glmn_spec_poly) %>%
+  workflow() %>%
+  add_model(glmn_spec_poly) %>%
+  add_recipe(rec_poly) %>%
   fit_resamples(folds, control = ctrl_imp)
 
 #SVM linear
@@ -839,15 +820,176 @@ if(dat.k>1){
   cv.dat= rbind(cv.dat, cv.all)
 }
 
+#==========================
+#predictions across models
+
+# https://juliasilge.com/blog/intro-tidymodels/
+
+results_train <- lm_fit %>%
+  predict(new_data = train) %>%
+  mutate(
+    truth = train$y,
+    model = "lm"
+  ) %>%
+  bind_rows(lm_fit_poly %>%
+              predict(new_data = train) %>%
+              mutate(
+                truth = train$y,
+                model = "lm poly"
+              ))%>%
+  bind_rows(glmn_fit %>%
+              predict(new_data = train) %>%
+              mutate(
+                truth = train$y,
+                model = "rr"
+              ))%>%
+  bind_rows(glmn_fit_poly %>%
+              predict(new_data = train) %>%
+              mutate(
+                truth = train$y,
+                model = "rr poly"
+              ))%>%
+  bind_rows(svm_rbf_fit %>%
+              predict(new_data = train) %>%
+              mutate(
+                truth = train$y,
+                model = "svm rbf"
+              ))%>%
+  bind_rows(svm_linear_fit %>%
+              predict(new_data = train) %>%
+              mutate(
+                truth = train$y,
+                model = "svm linear"
+              ))%>%
+  bind_rows(rf_fit %>%
+              predict(new_data = train) %>%
+              mutate(
+                truth = train$y,
+                model = "rf"
+              ))
+
+results_test <- lm_fit %>%
+  predict(new_data = test) %>%
+  mutate(
+    truth = test$y,
+    model = "lm"
+  ) %>%
+  bind_rows(lm_fit_poly %>%
+              predict(new_data = test) %>%
+              mutate(
+                truth = test$y,
+                model = "lm poly"
+              ))%>%
+  bind_rows(glmn_fit %>%
+              predict(new_data = test) %>%
+              mutate(
+                truth = test$y,
+                model = "rr"
+              ))%>%
+  bind_rows(glmn_fit_poly %>%
+              predict(new_data = test) %>%
+              mutate(
+                truth = test$y,
+                model = "rr poly"
+              ))%>%
+  bind_rows(svm_rbf_fit %>%
+              predict(new_data = test) %>%
+              mutate(
+                truth = test$y,
+                model = "svm rbf"
+              ))%>%
+  bind_rows(svm_linear_fit %>%
+              predict(new_data = test) %>%
+              mutate(
+                truth = test$y,
+                model = "svm linear"
+              ))%>%
+  bind_rows(rf_fit %>%
+              predict(new_data = test) %>%
+              mutate(
+                truth = test$y,
+                model = "rf"
+              ))
+
+#Combine across datasets
+results_train$dataset= datasets[dat.k]
+results_test$dataset= datasets[dat.k]
+
+if(dat.k==1){
+  pred.test= results_test
+  pred.train= results_train
+}
+if(dat.k>1){
+  pred.test= rbind(pred.test, results_test)
+  pred.train= rbind(pred.train, results_train)
+}
+
 } #end loop datasets
+
+#rmse
+results_train %>%
+  group_by(model) %>%
+  rmse(truth = truth, estimate = .pred)
+
+results_test %>%
+  group_by(model) %>%
+  rmse(truth = truth, estimate = .pred)
 
 #=============================
 #PLOTS
+
+#Trait plots
+# alpine plants: seed shed month earliest
+plot1a= ggplot(plants) + aes(x=earliest_seed_shed_mo, y = migration_m)+geom_point()+
+  xlab("Earliest seed shed month")+ylab("Elevation shift (m)")+ 
+  ggtitle('A. Alpine plants')+
+  theme_bw(base_size=14)
+
+# European plants: seed release height
+plot1b= ggplot(eplants) + aes(x=TemperatureIndicator, y = LeadingEdge)+geom_point()+
+  xlab("Temperature indicator")+ylab("Elevation shift (m)")+ 
+  ggtitle('B. European plants')+
+  theme_bw(base_size=14)
+
+# Lep: temp breadth
+plot1c= ggplot(lep) + aes(x=temp.sd, y = D_border_0.9)+geom_point()+
+  xlab("Temperature breadth")+ylab("Latitudinal shift (mile?)")+ 
+  ggtitle('C. Lepidoptera')+
+  theme_bw(base_size=14)
+
+# Fish: depth range
+plot1d= ggplot(fish) + aes(x=DepthRangeDeep, y = Latitudinal.Difference)+geom_point()+
+  xlab("Depth range (m)")+ylab("Latitudinal shift (°)")+ 
+  ggtitle('D. Fish')+
+  theme_bw(base_size=14) #+
+  #theme(axis.title.x = element_text(margin = margin(t = -15)))
+
+# Bird: temp breadth
+plot1e= ggplot(bird) + aes(x=temp.sd, y = D_border_0.9)+geom_point()+
+  xlab("Temperature breadth")+ylab("Latitudinal shift (mile?)")+ 
+  ggtitle('E. Birds')+
+  theme_bw(base_size=14)
+
+# Mammals: alt timit
+plot1f= ggplot(mammals) + aes(x=Orig_high_limit, y = High_change)+geom_point()+
+  xlab("Original altitude (m)")+ylab("Elevation shift (m)")+ 
+  ggtitle('F. Mammals')+
+  theme_bw(base_size=14)
+
+#----
+#combine
+#(plot1a | plot1b) / (plot1c | plot1d) / (plot1e | plot1f) / (plot1g | plot1h)
+
 #setwd for figures
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
 
-#Trait plots
-pdf("Fig0_alltraits.pdf", onefile = TRUE)
+pdf("Fig1_traits.pdf", height = 8, width = 10)
+(plot1a | plot1b | plot1c) / (plot1d | plot1e | plot1f)
+dev.off()
+
+#------------------------
+#All traits
+pdf("FigS1_alltraits.pdf", onefile = TRUE)
 print(plot.aplants)
 print(plot.eplants)
 print(plot.lep)
@@ -856,6 +998,7 @@ print(plot.bird)
 print(plot.mammal)
 dev.off()
 
+#-----------------------------
 #RMSE plot
 
 #scale to max value
@@ -890,7 +1033,7 @@ cv.plot= cv.plot +
   geom_errorbar(data=cv.dat, aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
-pdf("CvPlot.pdf",height = 6, width = 15)
+pdf("Fig2_CvPlot.pdf",height = 6, width = 15)
 cv.plot
 dev.off()
   
@@ -924,6 +1067,13 @@ vi.dat2$Variable= gsub(".C", "", vi.dat2$Variable)
 vi.dat2$Variable= gsub("^4", "", vi.dat2$Variable)
 vi.dat2$Variable= gsub("^5", "", vi.dat2$Variable)
 vi.dat2$Variable= gsub("^6", "", vi.dat2$Variable)
+
+vi.dat2$Variable= gsub("_poly_1", "", vi.dat2$Variable)
+vi.dat2$Variable= gsub("_poly_2", "", vi.dat2$Variable)
+vi.dat2$Variable= gsub(".1", "", vi.dat2$Variable, fixed = TRUE)
+vi.dat2$Variable= gsub(".2", "", vi.dat2$Variable, fixed = TRUE)
+vi.dat2$Variable= gsub("1", "", vi.dat2$Variable)
+vi.dat2$Variable= gsub("2", "", vi.dat2$Variable)
 
 vi.dat2$Variable[grep("TemperatureIndicator", vi.dat2$Variable, value = FALSE)]<- "TemperatureIndicator"
 vi.dat2$Variable[grep("LifeStrategy", vi.dat2$Variable, value = FALSE)]<- "LifeStrategy"
@@ -966,52 +1116,99 @@ vi.dat.max= rbind(vi.dat.max, vi.mean.add)
 #code mean
 vi.dat.max$IsMeanImp="N"
 vi.dat.max$IsMeanImp[which(vi.dat.max$Model=="mean")]="Y"
+#vi.dat.max$IsMeanImp= factor(vi.dat.max$IsMeanImp, levels=c("Y","N"), ordered=TRUE)
 
-#order datasets
-vi.dat2$dataset= factor(vi.dat2$dataset, levels=c("plants","eplants", "lep", "fish", "birds", "mammals"), ordered=TRUE)
+#order by mean trait importance
+#vi.dat2$dataset= factor(vi.dat2$dataset, levels=c("plants","eplants", "lep", "fish", "birds", "mammals"), ordered=TRUE)
+vi.dat.max<- vi.dat.max[order(vi.dat.max$IsMeanImp, vi.dat.max$MeanScale, vi.dat.max$dataset, decreasing = TRUE), ]
 
-vi.plot= ggplot(vi.dat2) + aes(y=MeanScale, x = Variable, color=Model, group=Model)+geom_point()+geom_line()+
+vi.plot= ggplot(vi.dat2) + aes(y=MeanScale, x = reorder(Variable, MeanScale), color=Model, group=Model)+geom_point()+geom_line()+
   facet_grid(.~dataset, scales="free_y") + theme(axis.text.x = element_text(angle=90))
+
+#order models by complexity
+vi.dat.max$Model= factor(vi.dat.max$Model, levels=c("lm","lm poly", "rr", "rr poly", "svm linear", "svm rbf", "rf", "mean"), ordered=TRUE)
 
 #---------------------
 #split by dataset and split
 library(patchwork)
+library(viridis)
 vi.plots <- vector('list', length(datasets))
 vi.plots.sign <- vector('list', length(datasets))
 
+pd <- position_dodge(0.4)
+
 for(dat.k in 1:6){
-  vi.plot= ggplot(vi.dat.max[vi.dat.max$dataset==datasets[dat.k],]) + aes(y=MeanScale, x = Variable, color=Model, group=Model, lty=IsMeanImp)+geom_point(size=2)+geom_line()+
+  vi.plot= ggplot(vi.dat.max[vi.dat.max$dataset==datasets[dat.k],]) + aes(y=MeanScale, x = reorder(Variable, MeanScale), color=Model, group=Model, lty=IsMeanImp)+
+    geom_pointrange(aes(ymin = MeanScale-StdevScale, ymax = MeanScale+StdevScale), position=pd)+
+    #geom_point(position=position_dodge(width=0.5))+
+      geom_line(position=pd) +  #geom_jitter(width = 0.1, height = 0)
     #facet_grid(.~RF, scales="free")+
-    ggtitle(datasets[dat.k])+theme_bw()+ylim(0,1)
+    ggtitle(dat.titles[dat.k])+theme_bw()+ylim(0,1)+
+    xlab("Variable")+ylab("Importance")+
+    scale_color_viridis_d(option="turbo") + 
+   # geom_errorbar(data=vi.dat2[vi.dat2$dataset==datasets[dat.k],], aes(y=MeanScale, x = Variable, ymin=MeanScale-StdevScale, ymax=MeanScale+StdevScale), width=0, position=position_dodge(width=0.5))+
+    guides(lty="none")
   
-  #vi.plot= vi.plot + 
-  #  geom_errorbar(data=vi.dat2[vi.dat2$dataset==datasets[dat.k],], aes(y=MeanScale, x = Variable, ymin=MeanScale-StdevScale, ymax=MeanScale+StdevScale), width=0, col="black")
-  
-  if(dat.k<6) vi.plot=vi.plot + theme(legend.position = "none")
+  if(dat.k>1) vi.plot=vi.plot + theme(legend.position = "none")
   vi.plots[[dat.k]]= vi.plot+ coord_flip()
   
   #account for sign
-  vi.plot= ggplot(vi.dat2[vi.dat2$dataset==datasets[dat.k],]) + aes(y=MeanScale.sign, x = Variable, color=Model, group=Model, lty=IsMeanImp)+geom_point(size=2)+geom_line()+
-    #facet_grid(.~RF, scales="free")+
-    ggtitle(datasets[dat.k])+theme_bw()+
+  #drop polys for sign
+  vi.dat.max2= vi.dat.max[which(vi.dat.max$Model %in% c("lm","rr", "svm linear", "svm rbf", "rf")),]
+  
+  vi.plot= ggplot(vi.dat.max2[vi.dat.max2$dataset==datasets[dat.k],]) + aes(y=MeanScale.sign, x = reorder(Variable, MeanScale), color=Model, group=Model, lty=IsMeanImp)+
+    geom_pointrange(aes(ymin = MeanScale.sign-StdevScale.sign, ymax = MeanScale.sign+StdevScale.sign), position=pd)+
+    geom_line(position=pd) +  #geom_jitter(width = 0.1, height = 0)
+    ggtitle(dat.titles[dat.k])+theme_bw()+
+    xlab("Variable")+ylab("Importance")+
+    scale_color_viridis_d(option="turbo") + 
+    guides(lty="none")+
     geom_hline(yintercept = 0, color="gray",lwd=1)
   
-  #vi.plot= vi.plot + 
-  #  geom_errorbar(data=vi.dat2[vi.dat2$dataset==datasets[dat.k],], aes(y=MeanScale, x = Variable, ymin=MeanScale-StdevScale, ymax=MeanScale+StdevScale), width=0, col="black")
-  
-  if(dat.k<6) vi.plot=vi.plot + theme(legend.position = "none")
+  if(dat.k>1) vi.plot=vi.plot + theme(legend.position = "none")
   vi.plots.sign[[dat.k]]= vi.plot+ coord_flip()
 }
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
-pdf("ViPlotsCV.pdf",height = 8, width = 14)
-(vi.plots[[1]] | vi.plots[[2]] | vi.plots[[3]])/
-  (vi.plots[[4]] | vi.plots[[5]] | vi.plots[[6]])
+pdf("Fig3_ViPlotsCV.pdf",height = 8, width = 14)
+(vi.plots[[2]] | vi.plots[[4]] | vi.plots[[5]])/
+  (vi.plots[[3]] | vi.plots[[6]] | vi.plots[[1]])
 dev.off()
 
-pdf("ViPlotsCV_sign.pdf",height = 8, width = 14)
-(vi.plots.sign[[1]] | vi.plots.sign[[2]] | vi.plots.sign[[3]])/
-  (vi.plots.sign[[4]] | vi.plots.sign[[5]] | vi.plots.sign[[6]])
+pdf("Fig4_ViPlotsCV_sign.pdf",height = 8, width = 14)
+(vi.plots.sign[[2]] | vi.plots.sign[[4]] | vi.plots.sign[[5]])/
+  (vi.plots.sign[[3]] | vi.plots.sign[[6]] | vi.plots.sign[[1]])
 dev.off()
 
 #===============================
+#prediction plots
+
+pred.test$datasub= "test"
+pred.train$datasub= "train"
+pred.all= rbind(pred.test, pred.train)
+pred.all$datasub= factor(pred.all$datasub, levels=c("train","test"), ordered=TRUE)
+
+#subset to plants and lep
+pred.all= pred.all[which(pred.all$dataset %in% c("eplants","lep")),]
+
+#order models by complexity
+pred.all$model= factor(pred.all$model, levels=c("lm","lm poly", "rr", "rr poly", "svm linear", "svm rbf", "rf"), ordered=TRUE)
+
+pred.plot= ggplot(pred.all) + aes(y=.pred, x = truth, color=model)+
+  geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
+  geom_point(alpha = 0.7) +
+  facet_grid(datasub~dataset)+
+  scale_color_viridis_d(option="turbo") +
+  labs(
+    x = "Observed shift",
+    y = "Predicted shift",
+    color = "Model"
+  )+ theme_bw()
+
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
+pdf("Fig5_ PredPlot.pdf",height = 8, width = 10)
+pred.plot
+dev.off()
+
+#===============================
+
