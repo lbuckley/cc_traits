@@ -84,14 +84,14 @@ plants$DispersalMode[plants$dispersal_mode=="gravity"]=0
 plants$DispersalMode[plants$dispersal_mode=="wind" | plants$dispersal_mode=="animal" | plants$dispersal_mode=="water" ]=1
 
 #restrict traits
-plants=plants[,c("Taxon","migration_m","earliest_seed_shed_mo","seed_shed_dur_mos",
-                 "nichebreadth_num_flor_zones", "BreedSysCode",
-                 "Ave_seed_shed_ht_m","flwr_dur_mos","DispersalMode",
-                 "diaspore_mass_mg","nichebreadth_amplit_ocean","Nbound_lat_GBIF_nosyn")]
+#plants=plants[,c("Taxon","migration_m","earliest_seed_shed_mo","seed_shed_dur_mos",
+#                 "nichebreadth_num_flor_zones", "BreedSysCode",
+#                 "Ave_seed_shed_ht_m","flwr_dur_mos","DispersalMode",
+#                 "diaspore_mass_mg","nichebreadth_amplit_ocean","Nbound_lat_GBIF_nosyn")]
 
 #restrict variables to increase datasets
 plants=plants[,c("Taxon","migration_m","earliest_seed_shed_mo","seed_shed_dur_mos",
-                 "Nbound_lat_GBIF_nosyn")]
+                 "Nbound_lat_GBIF_nosyn", "Bio1_mean_nosyn", "Bio1_std_nosyn")]
 
 #check correlations
 r <- cor(plants[,c(3:12)], use="complete.obs")
@@ -406,7 +406,9 @@ if(dat.k==2){
   rec_poly <- recipe(y ~ earliest_seed_shed_mo + seed_shed_dur_mos + Nbound_lat_GBIF_nosyn, data = train) %>%
     step_mutate(earliest_seed_shed_mo= poly(earliest_seed_shed_mo, degree=2)) %>%
     step_mutate(seed_shed_dur_mos= poly(seed_shed_dur_mos, degree=2)) %>%
-    step_mutate(Nbound_lat_GBIF_nosyn= poly(Nbound_lat_GBIF_nosyn, degree=2)) 
+    step_mutate(Nbound_lat_GBIF_nosyn= poly(Nbound_lat_GBIF_nosyn, degree=2)) %>%
+    step_mutate(Bio1_mean_nosyn= poly(Bio1_mean_nosyn, degree=2)) %>%
+    step_mutate(Bio1_std_nosyn= poly(Bio1_std_nosyn, degree=2)) 
     #step_poly(earliest_seed_shed_mo, seed_shed_dur_mos,  Nbound_lat_GBIF_nosyn) #%>%
     #step_ordinalscore(BreedSysCode, DispersalMode)
 }
