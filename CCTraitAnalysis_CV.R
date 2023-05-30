@@ -23,6 +23,9 @@ lepbird= read.csv("Data_Shifts_NicheMetrics_Traits.csv")
 datasets= c("mammals", "plants","fish", "eplants", "lep", "birds")
 dat.titles= c("montane mammals", "alpine plants","fish", "plants", "lepidoptera", "birds")
 
+dat.labs<- c("montane mammals", "alpine plants","fish", "plants", "lepidoptera", "birds")
+names(dat.labs)<- c("mammals", "plants","fish", "eplants", "lep", "birds")
+
 #----
 #Process data
 
@@ -54,8 +57,12 @@ mammals.l<- mammals %>%
   gather("trait", "value", 3:ncol(mammals))
 
 ## Facet labels
-trait.labs <- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","log Range size (km2)","log Mass (g)","Daily rhythm","Annual rhythm","Diet breadth","Temp mean","Temp breadth")
-names(trait.labs) <- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DailyRhythm","AnnualRhythm","DietBreadth","Bio1_mean","Bio1_std")
+#trait.labs <- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","log Range size (km2)","log Mass (g)","Daily rhythm","Annual rhythm","Diet breadth","Temp mean","Temp breadth")
+#names(trait.labs) <- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DailyRhythm","AnnualRhythm","DietBreadth","Bio1_mean","Bio1_std")
+trait.labs<- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","log Range size (km2)","log Mass (g)","Diet breadth","T mean","T breadth")
+names(trait.labs)<- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DietBreadth","Bio1_mean","Bio1_std")
+#store
+trait.labs.all<- cbind(trait.labs, names(trait.labs))
 
 #plot
 plot.mammal= ggplot(mammals.l) + aes(x=value, y = High_change)+geom_point()+
@@ -103,13 +110,11 @@ plants.l<- plants %>%
 plants.l$value= as.numeric(plants.l$value)
 
 ## Facet labels
-trait.labs <- c("Earliest seed shed (mo)","Seed shed duration (mo)","Number floristic zones", "Breeding System Code",
-                "Seed shed height (m)","Flower duration (mo)","Dispersal mode",
-                "Diaspore mass (mg)","Number oceanic zones","Northern Latitude (degrees)")
+trait.labs <- c("Earliest seed shed (mo)","Seed shed duration (mo)","Northern Latitude (degrees)", "T mean", "T breadth")
 names(trait.labs) <- c("earliest_seed_shed_mo","seed_shed_dur_mos",
-                       "nichebreadth_num_flor_zones", "BreedSysCode",
-                       "Ave_seed_shed_ht_m","flwr_dur_mos","DispersalMode",
-                       "diaspore_mass_mg","nichebreadth_amplit_ocean","Nbound_lat_GBIF_nosyn")
+                       "Nbound_lat_GBIF_nosyn", "Bio1_mean_nosyn", "Bio1_std_nosyn")
+trait.labs.m<- cbind(trait.labs, names(trait.labs))
+trait.labs.all<- rbind(trait.labs.all, trait.labs.m)
 
 #plot  
 plot.aplants= ggplot(plants.l) + aes(x=value, y = migration_m)+geom_point()+
@@ -121,7 +126,10 @@ plot.aplants= ggplot(plants.l) + aes(x=value, y = migration_m)+geom_point()+
 plants <- plants %>%
   mutate(earliest_seed_shed_mo = scale(earliest_seed_shed_mo),
          seed_shed_dur_mos = scale(seed_shed_dur_mos),
-         Nbound_lat_GBIF_nosyn = scale(Nbound_lat_GBIF_nosyn))
+         Nbound_lat_GBIF_nosyn = scale(Nbound_lat_GBIF_nosyn),
+         Bio1_mean_nosyn = scale(Bio1_mean_nosyn),
+         Bio1_std_nosyn = scale(Bio1_std_nosyn)
+         )
 
 #----
 #fish
@@ -151,6 +159,8 @@ fish.l<- fish %>%
 # Facet labels
 trait.labs <- c("Habitat","log Depth Range (?)","log Length (?)","Vulnerability","Water Type")
 names(trait.labs) <- c("habitat","DepthRangeDeep","Length","Vulnerability","WaterType")
+trait.labs.m<- cbind(trait.labs, names(trait.labs))
+trait.labs.all<- rbind(trait.labs.all, trait.labs.m)
 
 #plot
 plot.fish= ggplot(fish.l) + aes(x=value, y = Latitudinal.Difference)+geom_point()+
@@ -194,8 +204,10 @@ eplants.l<- eplants %>%
   gather("trait", "value", 3:ncol(eplants))
 
 # Facet labels
-trait.labs <- c("Temperature Indicator","Nutrient Indicator","Sheep Fur Retention","Gut Survival","Seed Release Height","Life Strategy","LifeSpan","N Veg Offsping","Dispersal","Persistence")
-names(trait.labs) <- c("TemperatureIndicator","NutrientIndicator","RetInFurSheep","GutSurvival","SeedReleaseHeight","LifeStrategy","LifeSpan","NoOfVegOffspings","Dispersal","Persistence")
+trait.labs <- c("Temperature Indicator","Nutrient Indicator","Seed Release Height","Life Strategy","Life Span","Offsping","Dispersal","Persistence")
+names(trait.labs) <- c("TemperatureIndicator","NutrientIndicator","SeedReleaseHeight","LifeStrategy","LifeSpan","NoOfVegOffspings","Dispersal","Persistence")
+trait.labs.m<- cbind(trait.labs, names(trait.labs))
+trait.labs.all<- rbind(trait.labs.all, trait.labs.m)
 
 #plot
 plot.eplants= ggplot(eplants.l) + aes(x=value, y = LeadingEdge)+geom_point()+
@@ -225,7 +237,7 @@ eplants$TemperatureIndicator= factor(eplants$TemperatureIndicator, ordered=TRUE)
 
 #restrict traits
 lepbird= lepbird[,c("Species","Taxonomic.group","D_border_0.9",
-                    "temp.mean","temp.sd","precip.mean","wintering","body.size","num.gen")] #"precip.sd",
+                    "temp.mean","temp.sd","precip.mean","precip.sd","wintering","body.size","num.gen","range.size")] #"precip.sd",
 
 #split moths and birds
 #moth= lepbird[lepbird$Taxonomic.group %in% c("Moth"),]
@@ -253,8 +265,10 @@ bird.l<- bird %>%
   gather("trait", "value", 4:ncol(bird))
 
 # Facet labels
-trait.labs <- c("Range Size","Wintering","Body size","Number Generations","Temp Mean","Temp Breadth","Moisture Mean") 
-names(trait.labs) <- c("range.size","wintering","body.size","num.gen","temp.mean","temp.sd","precip.mean")  
+trait.labs <- c("Range Size","Wintering","Body size","Number Generations","T mean","T breadth","P mean","P breadth") 
+names(trait.labs) <- c("range.size","wintering","body.size","num.gen","temp.mean","temp.sd","precip.mean","precip.sd")  
+trait.labs.m<- cbind(trait.labs, names(trait.labs))
+trait.labs.all<- rbind(trait.labs.all, trait.labs.m)
 
 #plot
 plot.lep= ggplot(lep.l) + aes(x=value, y = D_border_0.9)+geom_point()+
@@ -270,6 +284,15 @@ bird$num.gen= factor(bird$num.gen, ordered=TRUE)
 lep$num.gen= factor(lep$num.gen, ordered=TRUE)
 bird$wintering= factor(bird$wintering, ordered=TRUE)
 lep$wintering= factor(lep$wintering, ordered=TRUE)
+
+#scale and center
+lep <- lep %>%
+  mutate(temp.mean = scale(temp.mean),
+         temp.sd = scale(temp.sd),
+         precip.mean = scale(precip.mean),
+         precip.sd = scale(precip.sd),
+         body.size = scale(body.size),
+         range.size = scale(range.size))
 
 #===================================
 #Models
@@ -403,7 +426,7 @@ if(dat.k==1){
   }
 
 if(dat.k==2){
-  rec_poly <- recipe(y ~ earliest_seed_shed_mo + seed_shed_dur_mos + Nbound_lat_GBIF_nosyn, data = train) %>%
+  rec_poly <- recipe(y ~ earliest_seed_shed_mo + seed_shed_dur_mos + Nbound_lat_GBIF_nosyn + Bio1_mean_nosyn + Bio1_std_nosyn, data = train) %>%
     step_mutate(earliest_seed_shed_mo= poly(earliest_seed_shed_mo, degree=2)) %>%
     step_mutate(seed_shed_dur_mos= poly(seed_shed_dur_mos, degree=2)) %>%
     step_mutate(Nbound_lat_GBIF_nosyn= poly(Nbound_lat_GBIF_nosyn, degree=2)) %>%
@@ -434,7 +457,12 @@ if(dat.k==4){
 
 if(dat.k %in% c(5,6)){
   rec_poly <- recipe(y ~ ., data = train) %>%
-    step_poly(temp.mean, temp.sd, precip.mean, body.size, degree = 2) %>%
+    step_mutate(temp.mean= poly(temp.mean, degree=2)) %>%
+    step_mutate(temp.sd= poly(temp.sd, degree=2)) %>%
+    step_mutate(precip.mean= poly(precip.mean, degree=2)) %>%
+    step_mutate(precip.sd= poly(precip.sd, degree=2)) %>%
+    step_mutate(body.size= poly(body.size, degree=2)) %>%
+    step_mutate(range.size= poly(range.size, degree=2)) %>%
     step_ordinalscore(wintering,num.gen)
 }
 
@@ -800,10 +828,10 @@ vi.mods= rbind(vi.mods, vi.svm1)
 vi.svm1= as.data.frame(matrix(NA, nrow= nrow(svm_rbf_vi),ncol=6))
 names(vi.svm1)= names(vi.mods)
 vi.svm1$Variable= svm_rbf_vi$Variable
-vi.svm1$Mean= abs(svm_linear_vi$Importance)
-vi.svm1$Variance= svm_linear_vi$StDev
-vi.svm1$Mean.sign= svm_linear_vi$Importance
-vi.svm1$Variance.sign= svm_linear_vi$StDev
+vi.svm1$Mean= abs(svm_rbf_vi$Importance)
+vi.svm1$Variance= svm_rbf_vi$StDev
+vi.svm1$Mean.sign= svm_rbf_vi$Importance
+vi.svm1$Variance.sign= svm_rbf_vi$StDev
 vi.svm1$Model<- "svm rbf"
 vi.mods= rbind(vi.mods, vi.svm1)
 }  #end loop models
@@ -943,19 +971,19 @@ results_test %>%
 #Trait plots
 # alpine plants: seed shed month earliest
 plot1a= ggplot(plants) + aes(x=earliest_seed_shed_mo, y = migration_m)+geom_point()+
-  xlab("Earliest seed shed month")+ylab("Elevation shift (m)")+ 
+  xlab("Earliest seed shed (mo)")+ylab("Elevation shift (m)")+ 
   ggtitle('A. Alpine plants')+
   theme_bw(base_size=14)
 
 # European plants: seed release height
 plot1b= ggplot(eplants) + aes(x=TemperatureIndicator, y = LeadingEdge)+geom_point()+
-  xlab("Temperature indicator")+ylab("Elevation shift (m)")+ 
+  xlab("T indicator")+ylab("Elevation shift (m)")+ 
   ggtitle('B. European plants')+
   theme_bw(base_size=14)
 
 # Lep: temp breadth
 plot1c= ggplot(lep) + aes(x=temp.sd, y = D_border_0.9)+geom_point()+
-  xlab("Temperature breadth")+ylab("Latitudinal shift (mile?)")+ 
+  xlab("T breadth")+ylab("Latitudinal shift (mile?)")+ 
   ggtitle('C. Lepidoptera')+
   theme_bw(base_size=14)
 
@@ -968,13 +996,13 @@ plot1d= ggplot(fish) + aes(x=DepthRangeDeep, y = Latitudinal.Difference)+geom_po
 
 # Bird: temp breadth
 plot1e= ggplot(bird) + aes(x=temp.sd, y = D_border_0.9)+geom_point()+
-  xlab("Temperature breadth")+ylab("Latitudinal shift (mile?)")+ 
+  xlab("T breadth")+ylab("Latitudinal shift (mile?)")+ 
   ggtitle('E. Birds')+
   theme_bw(base_size=14)
 
 # Mammals: alt timit
 plot1f= ggplot(mammals) + aes(x=Orig_high_limit, y = High_change)+geom_point()+
-  xlab("Original altitude (m)")+ylab("Elevation shift (m)")+ 
+  xlab("Altitudinal limit (m)")+ylab("Elevation shift (m)")+ 
   ggtitle('F. Mammals')+
   theme_bw(base_size=14)
 
@@ -1029,7 +1057,7 @@ cv.dat$dataset= factor(cv.dat$dataset, levels=c("plants","eplants", "lep", "fish
 
 #plot
 cv.plot= ggplot(cv.dat) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom_line()+
-  facet_grid(.metric~dataset, scales="free_y")+theme_bw()
+  facet_grid(.metric~dataset, scales="free_y", labeller = labeller(dataset = dat.labs))+theme_bw()
 
 cv.plot= cv.plot + 
   geom_errorbar(data=cv.dat, aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")
@@ -1038,6 +1066,8 @@ setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Tra
 pdf("Fig2_CvPlot.pdf",height = 6, width = 15)
 cv.plot
 dev.off()
+
+#ROTATE AXIS LABELS
   
 #------------------
 #VI plots with cross validation
@@ -1130,6 +1160,19 @@ vi.plot= ggplot(vi.dat2) + aes(y=MeanScale, x = reorder(Variable, MeanScale), co
 #order models by complexity
 vi.dat.max$Model= factor(vi.dat.max$Model, levels=c("lm","lm poly", "rr", "rr poly", "svm linear", "svm rbf", "rf", "mean"), ordered=TRUE)
 
+#update labels
+trait.labs.all= as.data.frame(trait.labs.all)
+names(trait.labs.all)= c("trait.labs","trait")
+
+#update names
+vi.dat.max$Variable[grep("Bio_mean", vi.dat.max$Variable)]="Bio1_mean"
+vi.dat.max$Variable[grep("Bio_std", vi.dat.max$Variable)]="Bio1_std"
+vi.dat.max$Variable[grep("Rangesize_km", vi.dat.max$Variable)]="Rangesize_km2"
+
+match1= match(vi.dat.max$Variable,  trait.labs.all$trait)
+vi.dat.max$trait.lab<- NA
+vi.dat.max$trait.lab[which(!is.na(match1))]<- trait.labs.all$trait.labs[match1[which(!is.na(match1))]]
+
 #---------------------
 #split by dataset and split
 library(patchwork)
@@ -1140,7 +1183,7 @@ vi.plots.sign <- vector('list', length(datasets))
 pd <- position_dodge(0.4)
 
 for(dat.k in 1:6){
-  vi.plot= ggplot(vi.dat.max[vi.dat.max$dataset==datasets[dat.k],]) + aes(y=MeanScale, x = reorder(Variable, MeanScale), color=Model, group=Model, lty=IsMeanImp)+
+  vi.plot= ggplot(vi.dat.max[vi.dat.max$dataset==datasets[dat.k],]) + aes(y=MeanScale, x = reorder(trait.lab, MeanScale), color=Model, group=Model, lty=IsMeanImp)+
     geom_pointrange(aes(ymin = MeanScale-StdevScale, ymax = MeanScale+StdevScale), position=pd)+
     #geom_point(position=position_dodge(width=0.5))+
       geom_line(position=pd) +  #geom_jitter(width = 0.1, height = 0)
@@ -1158,7 +1201,7 @@ for(dat.k in 1:6){
   #drop polys for sign
   vi.dat.max2= vi.dat.max[which(vi.dat.max$Model %in% c("lm","rr", "svm linear", "svm rbf", "rf")),]
   
-  vi.plot= ggplot(vi.dat.max2[vi.dat.max2$dataset==datasets[dat.k],]) + aes(y=MeanScale.sign, x = reorder(Variable, MeanScale), color=Model, group=Model, lty=IsMeanImp)+
+  vi.plot= ggplot(vi.dat.max2[vi.dat.max2$dataset==datasets[dat.k],]) + aes(y=MeanScale.sign, x = reorder(trait.lab, MeanScale), color=Model, group=Model, lty=IsMeanImp)+
     geom_pointrange(aes(ymin = MeanScale.sign-StdevScale.sign, ymax = MeanScale.sign+StdevScale.sign), position=pd)+
     geom_line(position=pd) +  #geom_jitter(width = 0.1, height = 0)
     ggtitle(dat.titles[dat.k])+theme_bw()+
@@ -1199,7 +1242,7 @@ pred.all$model= factor(pred.all$model, levels=c("lm","lm poly", "rr", "rr poly",
 pred.plot= ggplot(pred.all) + aes(y=.pred, x = truth, color=model)+
   geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
   geom_point(alpha = 0.7) +
-  facet_grid(datasub~dataset)+
+  facet_grid(datasub~dataset, labeller = labeller(dataset = dat.labs))+
   scale_color_viridis_d(option="turbo") +
   labs(
     x = "Observed shift",
