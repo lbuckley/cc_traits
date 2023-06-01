@@ -9,6 +9,10 @@ library(patchwork)
 library(ggcorrplot)
 library(tidymodels)
 library(vip)
+library(ISLR)
+
+#load custon vip_shap function to keep sign
+source("vi_shap_keepsign.R")
 
 #----
 #read data
@@ -23,8 +27,11 @@ lepbird= read.csv("Data_Shifts_NicheMetrics_Traits.csv")
 datasets= c("mammals", "plants","fish", "eplants", "lep", "birds")
 dat.titles= c("small mammals", "alpine plants","fish", "plants", "moths", "birds")
 
-dat.labs<- c("small mammals", "alpine plants","fish", "plants", "moths", "birds")
+dat.labs<- c("F. Small mammals", "A. Alpine plants","D. Fish", "B. Plants", "C. Moths", "E. Birds")
 names(dat.labs)<- c("mammals", "plants","fish", "eplants", "lep", "birds")
+
+met.labs<- c("root mean squared error (RMSE)", "R-squared")
+names(met.labs)<- c("rmse", "rsq")
 
 #----
 #Process data
@@ -60,15 +67,15 @@ mammals.l<- mammals %>%
 ## Facet labels
 #trait.labs <- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","log Range size (km2)","log Mass (g)","Daily rhythm","Annual rhythm","Diet breadth","Temp mean","Temp breadth")
 #names(trait.labs) <- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DailyRhythm","AnnualRhythm","DietBreadth","Bio1_mean","Bio1_std")
-trait.labs<- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","log Range size (km2)","log Mass (g)","Diet breadth","T mean (°C)","T breadth (°C)")
-names(trait.labs)<- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DietBreadth","Bio1_mean","Bio1_std")
+trait.labs.m<- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","log Range size (km2)","log Mass (g)","Diet breadth","T mean (°C)","T breadth (°C)")
+names(trait.labs.m)<- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DietBreadth","Bio1_mean","Bio1_std")
 trait.cat<- c("c","l","l","l","e","l","e","c","c")
 #store
-trait.labs.all<- cbind(trait.labs, names(trait.labs), trait.cat)
+trait.labs.all<- cbind(trait.labs.m, names(trait.labs.m), trait.cat)
 
 #plot
 plot.mammal= ggplot(mammals.l) + aes(x=value, y = High_change)+geom_point()+
-  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) + 
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.m)) + 
   ggtitle('Mammals')+
   theme_bw()+ylab("Elevation shift (m)") #+stat_smooth(method='lm', formula= y~poly(x,2))
 #+geom_smooth(se=FALSE) #+scale_x_log10()
@@ -112,17 +119,17 @@ plants.l<- plants %>%
 plants.l$value= as.numeric(plants.l$value)
 
 ## Facet labels
-trait.labs <- c("Earliest seed shed (mo)","Seed shed duration (mo)","N latitude (°)", "T mean (°C)", "T breadth (°C)")
-names(trait.labs) <- c("earliest_seed_shed_mo","seed_shed_dur_mos",
+trait.labs.ap <- c("Earliest seed shed (mo)","Seed shed duration (mo)","N latitude (°)", "T mean (°C)", "T breadth (°C)")
+names(trait.labs.ap) <- c("earliest_seed_shed_mo","seed_shed_dur_mos",
                        "Nbound_lat_GBIF_nosyn", "Bio1_mean_nosyn", "Bio1_std_nosyn")
 trait.cat<- c("d","d","c", "c", "c")
 
-trait.labs.m<- cbind(trait.labs, names(trait.labs),trait.cat)
-trait.labs.all<- rbind(trait.labs.all, trait.labs.m)
+trait.labs.t<- cbind(trait.labs.ap, names(trait.labs.ap),trait.cat)
+trait.labs.all<- rbind(trait.labs.all, trait.labs.t)
 
 #plot  
 plot.aplants= ggplot(plants.l) + aes(x=value, y = migration_m)+geom_point()+
-  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Alpine plants') +
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.ap)) +ggtitle('Alpine plants') +
   theme_bw()+ylab("Elevation shift (m)") #+ stat_smooth(method='lm', formula= y~poly(x,2))
 #+scale_x_log10()
 
@@ -162,16 +169,16 @@ fish.l<- fish %>%
   gather("trait", "value", 3:ncol(fish))
 
 # Facet labels
-trait.labs <- c("Habitat","log Depth range (m)","log Length (cm)","Vulnerability","Water Type")
-names(trait.labs) <- c("habitat","DepthRangeDeep","Length","Vulnerability","WaterType")
+trait.labs.f <- c("Habitat","log Depth range (m)","log Length (cm)","Vulnerability","Water Type")
+names(trait.labs.f) <- c("habitat","DepthRangeDeep","Length","Vulnerability","WaterType")
 trait.cat<- c("e","e","l","e","e")
 
-trait.labs.m<- cbind(trait.labs, names(trait.labs), trait.cat)
-trait.labs.all<- rbind(trait.labs.all, trait.labs.m)
+trait.labs.t<- cbind(trait.labs.f, names(trait.labs.f), trait.cat)
+trait.labs.all<- rbind(trait.labs.all, trait.labs.t)
 
 #plot
 plot.fish= ggplot(fish.l) + aes(x=value, y = Latitudinal.Difference)+geom_point()+
-  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Triennial marine survey') +
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.f)) +ggtitle('Triennial marine survey') +
   theme_bw()+ylab("Latitudinal shift (°)") #+stat_smooth(method='lm', formula= y~poly(x,2))
 
 #scale and center
@@ -211,16 +218,16 @@ eplants.l<- eplants %>%
   gather("trait", "value", 3:ncol(eplants))
 
 # Facet labels
-trait.labs <- c("Temperature indicator","Nutrient indicator","Seed release height","Life strategy","Life span","Offsping","Dispersal","Persistence")
-names(trait.labs) <- c("TemperatureIndicator","NutrientIndicator","SeedReleaseHeight","LifeStrategy","LifeSpan","NoOfVegOffspings","Dispersal","Persistence")
-trait.cat<- c("c","e","d","l","l","l","d","l")
+trait.labs.p <- c("Temperature indicator","Nutrient indicator","Dispersal","Persistence")
+names(trait.labs.p) <- c("TemperatureIndicator","NutrientIndicator","Dispersal","Persistence")
+trait.cat<- c("c","e","d","l")
 
-trait.labs.m<- cbind(trait.labs, names(trait.labs), trait.cat)
-trait.labs.all<- rbind(trait.labs.all, trait.labs.m)
+trait.labs.t<- cbind(trait.labs.p, names(trait.labs.p), trait.cat)
+trait.labs.all<- rbind(trait.labs.all, trait.labs.t)
 
 #plot
 plot.eplants= ggplot(eplants.l) + aes(x=value, y = LeadingEdge)+geom_point()+
-  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('European plants') +
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.p)) +ggtitle('European plants') +
   theme_bw()+ylab("Elevational shift (m)") #+stat_smooth(method='lm', formula= y~poly(x,2))
 #check LeadingEdge, Optimum, RearEdge
 
@@ -271,16 +278,16 @@ bird.l<- bird %>%
   gather("trait", "value", 4:ncol(bird))
 
 # Facet labels
-trait.labs <- c("Range size","Overwintering mode","Body size","Number generations","T mean (°C)","T breadth (°C)","P mean (mm)","P breadth (mm)") 
-names(trait.labs) <- c("range.size","wintering","body.size","num.gen","temp.mean","temp.sd","precip.mean","precip.sd")  
+trait.labs.l <- c("Range size","Overwintering mode","Body size","Number generations","T mean (°C)","T breadth (°C)","P mean (mm)","P breadth (mm)") 
+names(trait.labs.l) <- c("range.size","wintering","body.size","num.gen","temp.mean","temp.sd","precip.mean","precip.sd")  
 trait.cat<- c("e","l","l","l","c","c","c","c")
 
-trait.labs.m<- cbind(trait.labs, names(trait.labs), trait.cat)
-trait.labs.all<- rbind(trait.labs.all, trait.labs.m)
+trait.labs.t<- cbind(trait.labs.l, names(trait.labs.l), trait.cat)
+trait.labs.all<- rbind(trait.labs.all, trait.labs.t)
 
 #plot
 plot.lep= ggplot(lep.l) + aes(x=value, y = D_border_0.9)+geom_point()+
-  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Lepidopterans') +
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.l)) +ggtitle('Lepidopterans') +
   theme_bw()+ylab("Latitudinal shift (km)") 
 
 plot.bird= ggplot(bird.l) + aes(x=value, y = D_border_0.9)+geom_point()+
@@ -317,10 +324,6 @@ lep <- lep %>%
 #https://rstudio-pubs-static.s3.amazonaws.com/802290_cb734d1218864fd093bdcf69208bd21a.html
 #Example: https://smltar.com/mlregression.html
 
-# install.packages(c('tidyverse', 'tidymodels', 'ranger', 'vip', 'palmerpenguins', 'skimr', 'paletteer', 'nnet', 'here'))
-library(tidymodels)
-library(ISLR)
-
 # eval: k-fold cross-validation scheme (Hastie et al. 2009, Section 7.10) combined with a mean squared error metric
 # https://rsample.tidymodels.org/reference/vfold_cv.html
 
@@ -334,6 +337,7 @@ if(dat.k==1){
   dat$y= dat$High_change
   #drop ID rows
   dat<- dat[,3:ncol(dat)]
+  trait.labs.svm= names(trait.labs.m)
 }
 
 if(dat.k==2){
@@ -343,6 +347,7 @@ if(dat.k==2){
   dat$y= dat$migration_m
   #drop ID rows
   dat<- dat[,3:ncol(dat)]
+  trait.labs.svm= names(trait.labs.ap)
 }
 
 if(dat.k==3){
@@ -352,6 +357,7 @@ if(dat.k==3){
   dat$y= dat$Latitudinal.Difference
   #drop ID rows
   dat<- dat[,3:ncol(dat)]
+  trait.labs.svm= names(trait.labs.f)
 }
 
 if(dat.k==4){
@@ -361,6 +367,7 @@ if(dat.k==4){
   dat$y= dat$LeadingEdge
   #drop ID rows
   dat<- dat[,3:ncol(dat)]
+  trait.labs.svm= names(trait.labs.p)
 }
 
 if(dat.k==5){
@@ -370,6 +377,7 @@ if(dat.k==5){
   dat$y= dat$D_border_0.9
   #drop ID rows
   dat<- dat[,4:ncol(dat)]
+  trait.labs.svm= names(trait.labs.l)
  }
 
 if(dat.k==6){
@@ -379,6 +387,7 @@ if(dat.k==6){
   dat$y= dat$D_border_0.9
   #drop ID rows
   dat<- dat[,4:ncol(dat)]
+  trait.labs.svm= names(trait.labs.l)
 }
 
 ## USE ABSOLUTE VALUE OF SHIFT
@@ -589,7 +598,7 @@ lm_res <- fit_resamples(
 
 cv.all= lm_res %>%
   collect_metrics()
-cv.all$Model="lm"
+cv.all$Model="LM"
 
 lm_res %>%
   unnest(.predictions) %>%
@@ -613,7 +622,7 @@ lm_res <- fit_resamples(
 
 cv.metric= lm_res %>%
   collect_metrics()
-cv.metric$Model="lm poly"
+cv.metric$Model="LM poly"
 cv.all=rbind(cv.all, cv.metric)
 
 #---------------------
@@ -628,7 +637,7 @@ glmn_res <- fit_resamples(
 
 cv.metric= glmn_res %>%
   collect_metrics()
-cv.metric$Model="rr"
+cv.metric$Model="RR"
 cv.all=rbind(cv.all, cv.metric)
 
 #---------------------
@@ -643,7 +652,7 @@ glmn_res_poly <- fit_resamples(
 
 cv.metric= glmn_res_poly %>%
   collect_metrics()
-cv.metric$Model="rr poly"
+cv.metric$Model="RR poly"
 cv.all=rbind(cv.all, cv.metric)
 
 #---------------------
@@ -657,7 +666,7 @@ svm_rbf_res <- fit_resamples(
 
 cv.metric= svm_rbf_res %>%
   collect_metrics()
-cv.metric$Model="svm rbf"
+cv.metric$Model="SVM rbf"
 cv.all=rbind(cv.all, cv.metric)
 
 svm_rbf_res %>%
@@ -681,7 +690,7 @@ svm_linear_res <- fit_resamples(
 
 cv.metric= svm_linear_res %>%
   collect_metrics()
-cv.metric$Model="svm linear"
+cv.metric$Model="SVM linear"
 cv.all=rbind(cv.all, cv.metric)
 
 svm_linear_res %>%
@@ -706,7 +715,7 @@ rf_res <- fit_resamples(
 
 cv.metric= rf_res %>%
   collect_metrics()
-cv.metric$Model="rf"
+cv.metric$Model="RF"
 cv.all=rbind(cv.all, cv.metric)
 
 rf_res %>%
@@ -764,12 +773,20 @@ svm_linear_fit <- workflow() %>%
   add_formula(y ~ .) %>%
   fit(train)
 
-svm_linear_vi<-
-  svm_linear_fit %>%
-  pull_workflow_fit() %>%
-  vi(method = "permute", 
-     target = "y", metric = "rsquared",
-     pred_wrapper = kernlab::predict, train = train, nsim=7)
+ svm_linear_vi<-
+   svm_linear_fit %>%
+   pull_workflow_fit() %>%
+   vi(method = "permute", 
+      target = "y", metric = "rsquared",
+      pred_wrapper = kernlab::predict, train = train, nsim=7)
+
+# #MODIFY TO KEEP SIGN
+#  svm_linear_vi<-
+#       svm_linear_fit %>%
+#       pull_workflow_fit() %>%
+#       vi(method = "shap", 
+#         feature_names= trait.labs.svm,  
+#         pred_wrapper = kernlab::predict, train = train, nsim=7)
 
 #SVM RBF
 svm_rbf_fit <- workflow() %>%
@@ -777,12 +794,20 @@ svm_rbf_fit <- workflow() %>%
   add_formula(y ~ .) %>%
   fit(train)
 
-svm_rbf_vi<-
-  svm_rbf_fit %>%
-  pull_workflow_fit() %>%
-  vi(method = "permute", 
-     target = "y", metric = "rsquared",
-     pred_wrapper = kernlab::predict, train = train, nsim=7)
+ svm_rbf_vi<-
+   svm_rbf_fit %>%
+   pull_workflow_fit() %>%
+   vi(method = "permute", 
+      target = "y", metric = "rsquared",
+      pred_wrapper = kernlab::predict, train = train, nsim=7)
+
+ #MODIFY TO KEEP SIGN
+ # svm_rbf_vi<-
+ #      svm_rbf_fit %>%
+ #      pull_workflow_fit() %>%
+ #      vi(method = "shap", 
+ #         feature_names= trait.labs.svm,
+ #         pred_wrapper = kernlab::predict, train = train, nsim=20)
 
 #RF
 rf_res <-
@@ -790,7 +815,7 @@ rf_res <-
   fit_resamples(folds, control = ctrl_imp)
 
 #Gather VI
-mods= c("lm","lm poly","rr","rr poly","rf")
+mods= c("LM","LM poly","RR","RR poly","RF")
 
 for(mod.k in 1:5){
 
@@ -831,7 +856,7 @@ vi.svm1$Mean= abs(svm_linear_vi$Importance)
 vi.svm1$Variance= svm_linear_vi$StDev
 vi.svm1$Mean.sign= svm_linear_vi$Importance
 vi.svm1$Variance.sign= svm_linear_vi$StDev
-vi.svm1$Model<- "svm linear"
+vi.svm1$Model<- "SVM linear"
 vi.mods= rbind(vi.mods, vi.svm1)
 
 vi.svm1= as.data.frame(matrix(NA, nrow= nrow(svm_rbf_vi),ncol=6))
@@ -841,7 +866,7 @@ vi.svm1$Mean= abs(svm_rbf_vi$Importance)
 vi.svm1$Variance= svm_rbf_vi$StDev
 vi.svm1$Mean.sign= svm_rbf_vi$Importance
 vi.svm1$Variance.sign= svm_rbf_vi$StDev
-vi.svm1$Model<- "svm rbf"
+vi.svm1$Model<- "SVM rbf"
 vi.mods= rbind(vi.mods, vi.svm1)
 }  #end loop models
 
@@ -868,86 +893,86 @@ results_train <- lm_fit %>%
   predict(new_data = train) %>%
   mutate(
     truth = train$y,
-    model = "lm"
+    model = "LM"
   ) %>%
   bind_rows(lm_fit_poly %>%
               predict(new_data = train) %>%
               mutate(
                 truth = train$y,
-                model = "lm poly"
+                model = "LM poly"
               ))%>%
   bind_rows(glmn_fit %>%
               predict(new_data = train) %>%
               mutate(
                 truth = train$y,
-                model = "rr"
+                model = "RR"
               ))%>%
   bind_rows(glmn_fit_poly %>%
               predict(new_data = train) %>%
               mutate(
                 truth = train$y,
-                model = "rr poly"
+                model = "RR poly"
               ))%>%
   bind_rows(svm_rbf_fit %>%
               predict(new_data = train) %>%
               mutate(
                 truth = train$y,
-                model = "svm rbf"
+                model = "SVM rbf"
               ))%>%
   bind_rows(svm_linear_fit %>%
               predict(new_data = train) %>%
               mutate(
                 truth = train$y,
-                model = "svm linear"
+                model = "SVM linear"
               ))%>%
   bind_rows(rf_fit %>%
               predict(new_data = train) %>%
               mutate(
                 truth = train$y,
-                model = "rf"
+                model = "RF"
               ))
 
 results_test <- lm_fit %>%
   predict(new_data = test) %>%
   mutate(
     truth = test$y,
-    model = "lm"
+    model = "LM"
   ) %>%
   bind_rows(lm_fit_poly %>%
               predict(new_data = test) %>%
               mutate(
                 truth = test$y,
-                model = "lm poly"
+                model = "LM poly"
               ))%>%
   bind_rows(glmn_fit %>%
               predict(new_data = test) %>%
               mutate(
                 truth = test$y,
-                model = "rr"
+                model = "RR"
               ))%>%
   bind_rows(glmn_fit_poly %>%
               predict(new_data = test) %>%
               mutate(
                 truth = test$y,
-                model = "rr poly"
+                model = "RR poly"
               ))%>%
   bind_rows(svm_rbf_fit %>%
               predict(new_data = test) %>%
               mutate(
                 truth = test$y,
-                model = "svm rbf"
+                model = "SVM rbf"
               ))%>%
   bind_rows(svm_linear_fit %>%
               predict(new_data = test) %>%
               mutate(
                 truth = test$y,
-                model = "svm linear"
+                model = "SVM linear"
               ))%>%
   bind_rows(rf_fit %>%
               predict(new_data = test) %>%
               mutate(
                 truth = test$y,
-                model = "rf"
+                model = "RF"
               ))
 
 #Combine across datasets
@@ -1060,24 +1085,50 @@ cv.dat$MeanScale[which(cv.dat$.metric=="rsq")]= cv.dat$mean[which(cv.dat$.metric
 cv.dat$SterrScale[which(cv.dat$.metric=="rsq")]= cv.dat$std_err[which(cv.dat$.metric=="rsq")]
 
 #order models
-cv.dat$Model= factor(cv.dat$Model, levels=c("lm","lm poly", "rr", "rr poly", "svm linear", "svm rbf", "rf"), ordered=TRUE)
+cv.dat$Model= factor(cv.dat$Model, levels=c("LM","LM poly", "RR", "RR poly", "SVM linear", "SVM rbf", "RF"), ordered=TRUE)
 #order datasets
 cv.dat$dataset= factor(cv.dat$dataset, levels=c("plants","eplants", "lep", "fish", "birds", "mammals"), ordered=TRUE)
 
 #plot
 cv.plot= ggplot(cv.dat) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom_line()+
-  facet_grid(.metric~dataset, scales="free_y", labeller = labeller(dataset = dat.labs))+theme_bw()
+  facet_grid(.metric~dataset, scales="free_y", labeller = labeller(dataset = dat.labs, .metric=met.labs), switch="y")+
+  theme_bw()
 
 cv.plot= cv.plot + 
-  geom_errorbar(data=cv.dat, aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")
+  geom_errorbar(data=cv.dat, aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+ ylab("")
 
+#-----
+#plot average CV
+cv.dat.lm= cv.dat[cv.dat$Model=="LM",]
+cv.dat$mean.dif= cv.dat$MeanScale - cv.dat.lm[match(cv.dat$dataset, cv.dat.lm$dataset),"MeanScale"]
+cv.dat2= cv.dat[-which(cv.dat$Model=="LM"),]
+cv.dat2= cv.dat2[-which(cv.dat2$.metric=="rsq"),]
+cv.dat2$dat= dat.titles[match(cv.dat2$dataset, datasets)]
+cv.dat2$dat= factor(cv.dat2$dat, levels=c("alpine plants","plants","moths","fish","birds","small mammals"))
+
+datasets= c("mammals", "plants","fish", "eplants", "lep", "birds")
+dat.titles= c("small mammals", "alpine plants","fish", "plants", "moths", "birds")
+
+#mean across models
+cv.dat.agg= aggregate(cv.dat2, by=list(cv.dat2$Model), FUN="mean")
+colnames(cv.dat.agg)[1]<- "Model"
+cv.dat.agg<- cv.dat.agg[,c(1,13)]
+
+#plot
+cv.mean.plot=ggplot(cv.dat2) + aes(y=mean.dif, x = Model, color=dat)+geom_point(size=2)+geom_line(aes(group=dat))+
+  theme_bw()+ylab("delta RMSE from LM")
+
+cv.mean.plot= cv.mean.plot + 
+  geom_point(data = cv.dat.agg, 
+             mapping = aes(x = Model, y = mean.dif), color="black", size=4, shape=15)+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+theme(legend.position="bottom")
+  
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
 pdf("Fig2_CvPlot.pdf",height = 6, width = 15)
-cv.plot
+cv.plot + (cv.mean.plot  ) +  plot_layout(widths = c(4.5, 1)) #/ plot_spacer()
 dev.off()
 
-#ROTATE AXIS LABELS
-  
 #------------------
 #VI plots with cross validation
 
@@ -1167,7 +1218,7 @@ vi.plot= ggplot(vi.dat2) + aes(y=MeanScale, x = reorder(Variable, MeanScale), co
   facet_grid(.~dataset, scales="free_y") + theme(axis.text.x = element_text(angle=90))
 
 #order models by complexity
-vi.dat.max$Model= factor(vi.dat.max$Model, levels=c("lm","lm poly", "rr", "rr poly", "svm linear", "svm rbf", "rf", "mean"), ordered=TRUE)
+vi.dat.max$Model= factor(vi.dat.max$Model, levels=c("LM","LM poly", "RR", "RR poly", "SVM linear", "SVM rbf", "RF", "mean"), ordered=TRUE)
 
 #update labels
 trait.labs.all= as.data.frame(trait.labs.all)
@@ -1181,6 +1232,10 @@ vi.dat.max$Variable[grep("Rangesize_km", vi.dat.max$Variable)]="Rangesize_km2"
 match1= match(vi.dat.max$Variable,  trait.labs.all$trait)
 vi.dat.max$trait.lab<- NA
 vi.dat.max$trait.lab[which(!is.na(match1))]<- trait.labs.all$trait.labs[match1[which(!is.na(match1))]]
+vi.dat.max$trait.cat[which(!is.na(match1))]<- trait.labs.all$category[match1[which(!is.na(match1))]]
+
+#set color
+vi.dat.max$trait.color= c("darkgreen","cadetblue","blue","purple")[match(vi.dat.max$trait.cat, c("c","d","e","l") )]
 
 #---------------------
 #split by dataset and split
@@ -1192,32 +1247,38 @@ vi.plots.sign <- vector('list', length(datasets))
 pd <- position_dodge(0.4)
 
 for(dat.k in 1:6){
-  vi.plot= ggplot(vi.dat.max[vi.dat.max$dataset==datasets[dat.k],]) + aes(y=MeanScale, x = reorder(trait.lab, MeanScale), color=Model, group=Model, lty=IsMeanImp)+
+  #reorder
+  vi.dat.sub= vi.dat.max[vi.dat.max$dataset==datasets[dat.k],]
+  vi.dat.sub = vi.dat.sub[order(vi.dat.sub$trait.lab), ]
+  
+  vi.plot= ggplot(vi.dat.sub) + aes(y=MeanScale, x = trait.lab, color=Model, group=Model, lty=IsMeanImp)+
     geom_pointrange(aes(ymin = MeanScale-StdevScale, ymax = MeanScale+StdevScale), position=pd)+
     #geom_point(position=position_dodge(width=0.5))+
       geom_line(position=pd) +  #geom_jitter(width = 0.1, height = 0)
     #facet_grid(.~RF, scales="free")+
-    ggtitle(dat.titles[dat.k])+theme_bw()+ylim(0,1)+
+    ggtitle(dat.labs[dat.k])+theme_bw()+ylim(0,1)+
     xlab("Variable")+ylab("Importance")+
     scale_color_viridis_d(option="turbo") + 
    # geom_errorbar(data=vi.dat2[vi.dat2$dataset==datasets[dat.k],], aes(y=MeanScale, x = Variable, ymin=MeanScale-StdevScale, ymax=MeanScale+StdevScale), width=0, position=position_dodge(width=0.5))+
-    guides(lty="none")
+    guides(lty="none")+
+    theme(axis.text.y = element_text(colour= vi.dat.sub$trait.color[vi.dat.sub$Model=="LM"]))
   
   if(dat.k>1) vi.plot=vi.plot + theme(legend.position = "none")
   vi.plots[[dat.k]]= vi.plot+ coord_flip()
   
   #account for sign
   #drop polys for sign
-  vi.dat.max2= vi.dat.max[which(vi.dat.max$Model %in% c("lm","rr", "svm linear", "svm rbf", "rf")),]
+  vi.dat.sub= vi.dat.sub[which(vi.dat.sub$Model %in% c("LM","RR", "SVM linear", "SVM rbf", "RF")),]
   
-  vi.plot= ggplot(vi.dat.max2[vi.dat.max2$dataset==datasets[dat.k],]) + aes(y=MeanScale.sign, x = reorder(trait.lab, MeanScale), color=Model, group=Model, lty=IsMeanImp)+
+  vi.plot= ggplot(vi.dat.sub) + aes(y=MeanScale.sign, x = trait.lab, color=Model, group=Model, lty=IsMeanImp)+
     geom_pointrange(aes(ymin = MeanScale.sign-StdevScale.sign, ymax = MeanScale.sign+StdevScale.sign), position=pd)+
     geom_line(position=pd) +  #geom_jitter(width = 0.1, height = 0)
-    ggtitle(dat.titles[dat.k])+theme_bw()+
+    ggtitle(dat.labs[dat.k])+theme_bw()+
     xlab("Variable")+ylab("Importance")+
     scale_color_viridis_d(option="turbo") + 
     guides(lty="none")+
-    geom_hline(yintercept = 0, color="gray",lwd=1)
+    geom_hline(yintercept = 0, color="gray",lwd=1)+
+    theme(axis.text.y = element_text(colour= vi.dat.sub$trait.color[vi.dat.sub$Model=="LM"]))
   
   if(dat.k>1) vi.plot=vi.plot + theme(legend.position = "none")
   vi.plots.sign[[dat.k]]= vi.plot+ coord_flip()
@@ -1234,10 +1295,6 @@ pdf("Fig4_ViPlotsCV_sign.pdf",height = 8, width = 14)
   (vi.plots.sign[[3]] | vi.plots.sign[[6]] | vi.plots.sign[[1]])
 dev.off()
 
-#color by trait group
-#a <- ifelse(data$category == 0, "red", "blue")
-# theme(axis.text.x = element_text(angle = 45, hjust = 1, colour = a))
-
 #===============================
 #prediction plots
 
@@ -1250,7 +1307,7 @@ pred.all$datasub= factor(pred.all$datasub, levels=c("train","test"), ordered=TRU
 pred.all= pred.all[which(pred.all$dataset %in% c("eplants","lep")),]
 
 #order models by complexity
-pred.all$model= factor(pred.all$model, levels=c("lm","lm poly", "rr", "rr poly", "svm linear", "svm rbf", "rf"), ordered=TRUE)
+pred.all$model= factor(pred.all$model, levels=c("LM","LM poly", "RR", "RR poly", "SVM linear", "SVM rbf", "RF"), ordered=TRUE)
 
 pred.plot= ggplot(pred.all) + aes(y=.pred, x = truth, color=model)+
   geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
