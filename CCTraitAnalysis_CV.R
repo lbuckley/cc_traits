@@ -21,9 +21,9 @@ eplants= read.csv("rumpf_ShiftsTraitsBuckley_20180418.csv")
 lepbird= read.csv("Data_Shifts_NicheMetrics_Traits.csv")
 
 datasets= c("mammals", "plants","fish", "eplants", "lep", "birds")
-dat.titles= c("montane mammals", "alpine plants","fish", "plants", "lepidoptera", "birds")
+dat.titles= c("small mammals", "alpine plants","fish", "plants", "moths", "birds")
 
-dat.labs<- c("montane mammals", "alpine plants","fish", "plants", "lepidoptera", "birds")
+dat.labs<- c("small mammals", "alpine plants","fish", "plants", "moths", "birds")
 names(dat.labs)<- c("mammals", "plants","fish", "eplants", "lep", "birds")
 
 #----
@@ -31,6 +31,7 @@ names(dat.labs)<- c("mammals", "plants","fish", "eplants", "lep", "birds")
 
 #mammals
 # Mammals: alt timit, longevity
+# https://onlinelibrary.wiley.com/doi/full/10.1111/j.1461-0248.2011.01620.x
 
 #update traits to correspond to Angert et al.
 mammals$DietBreadth=0
@@ -59,10 +60,11 @@ mammals.l<- mammals %>%
 ## Facet labels
 #trait.labs <- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","log Range size (km2)","log Mass (g)","Daily rhythm","Annual rhythm","Diet breadth","Temp mean","Temp breadth")
 #names(trait.labs) <- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DailyRhythm","AnnualRhythm","DietBreadth","Bio1_mean","Bio1_std")
-trait.labs<- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","log Range size (km2)","log Mass (g)","Diet breadth","T mean","T breadth")
+trait.labs<- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","log Range size (km2)","log Mass (g)","Diet breadth","T mean (°C)","T breadth (°C)")
 names(trait.labs)<- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DietBreadth","Bio1_mean","Bio1_std")
+trait.cat<- c("c","l","l","l","e","l","e","c","c")
 #store
-trait.labs.all<- cbind(trait.labs, names(trait.labs))
+trait.labs.all<- cbind(trait.labs, names(trait.labs), trait.cat)
 
 #plot
 plot.mammal= ggplot(mammals.l) + aes(x=value, y = High_change)+geom_point()+
@@ -110,10 +112,12 @@ plants.l<- plants %>%
 plants.l$value= as.numeric(plants.l$value)
 
 ## Facet labels
-trait.labs <- c("Earliest seed shed (mo)","Seed shed duration (mo)","Northern Latitude (degrees)", "T mean", "T breadth")
+trait.labs <- c("Earliest seed shed (mo)","Seed shed duration (mo)","N latitude (°)", "T mean (°C)", "T breadth (°C)")
 names(trait.labs) <- c("earliest_seed_shed_mo","seed_shed_dur_mos",
                        "Nbound_lat_GBIF_nosyn", "Bio1_mean_nosyn", "Bio1_std_nosyn")
-trait.labs.m<- cbind(trait.labs, names(trait.labs))
+trait.cat<- c("d","d","c", "c", "c")
+
+trait.labs.m<- cbind(trait.labs, names(trait.labs),trait.cat)
 trait.labs.all<- rbind(trait.labs.all, trait.labs.m)
 
 #plot  
@@ -133,6 +137,7 @@ plants <- plants %>%
 
 #----
 #fish
+#https://www.science.org/doi/abs/10.1126/science.1239352
 
 #Make salt / fresh variable
 fish$WaterType=0
@@ -157,9 +162,11 @@ fish.l<- fish %>%
   gather("trait", "value", 3:ncol(fish))
 
 # Facet labels
-trait.labs <- c("Habitat","log Depth Range (?)","log Length (?)","Vulnerability","Water Type")
+trait.labs <- c("Habitat","log Depth range (m)","log Length (cm)","Vulnerability","Water Type")
 names(trait.labs) <- c("habitat","DepthRangeDeep","Length","Vulnerability","WaterType")
-trait.labs.m<- cbind(trait.labs, names(trait.labs))
+trait.cat<- c("e","e","l","e","e")
+
+trait.labs.m<- cbind(trait.labs, names(trait.labs), trait.cat)
 trait.labs.all<- rbind(trait.labs.all, trait.labs.m)
 
 #plot
@@ -183,17 +190,17 @@ fish$WaterType= factor(fish$WaterType, ordered=TRUE)
 
 #to numeric
 #Check codes: (1) C-competitors, (2) S-stress tolerators, and (3) R-ruderals.
-ls.codes=c("ccc","ccs","css","crs","sss","rss","rrs") 
-eplants$LifeStrategy= match(eplants$LifeStrategy, ls.codes)
+#ls.codes=c("ccc","ccs","css","crs","sss","rss","rrs") 
+#eplants$LifeStrategy= match(eplants$LifeStrategy, ls.codes)
 
 #log transform
-eplants$LifeSpan= log(eplants$LifeSpan)
-eplants$SeedReleaseHeight= log(eplants$SeedReleaseHeight)
+#eplants$LifeSpan= log(eplants$LifeSpan)
+#eplants$SeedReleaseHeight= log(eplants$SeedReleaseHeight)
 
 #restrict traits
-#eplants=eplants[,c("speciesname","LeadingEdge","TemperatureIndicator","NutrientIndicator","Dispersal","Persistence","RetInFurSheep","GutSurvival")]
-eplants=eplants[,c("speciesname","LeadingEdge","TemperatureIndicator","NutrientIndicator","SeedReleaseHeight","LifeStrategy","LifeSpan","NoOfVegOffspings","Dispersal","Persistence")]
+#eplants=eplants[,c("speciesname","LeadingEdge","TemperatureIndicator","NutrientIndicator","SeedReleaseHeight","LifeStrategy","LifeSpan","NoOfVegOffspings","Dispersal","Persistence")]
 #Look into adding Historic position, Historical optimum
+eplants=eplants[,c("speciesname","LeadingEdge","TemperatureIndicator","NutrientIndicator","Dispersal","Persistence")]
 
 #check correlations
 r <- cor(eplants[,c(3:12)], use="complete.obs")
@@ -204,9 +211,11 @@ eplants.l<- eplants %>%
   gather("trait", "value", 3:ncol(eplants))
 
 # Facet labels
-trait.labs <- c("Temperature Indicator","Nutrient Indicator","Seed Release Height","Life Strategy","Life Span","Offsping","Dispersal","Persistence")
+trait.labs <- c("Temperature indicator","Nutrient indicator","Seed release height","Life strategy","Life span","Offsping","Dispersal","Persistence")
 names(trait.labs) <- c("TemperatureIndicator","NutrientIndicator","SeedReleaseHeight","LifeStrategy","LifeSpan","NoOfVegOffspings","Dispersal","Persistence")
-trait.labs.m<- cbind(trait.labs, names(trait.labs))
+trait.cat<- c("c","e","d","l","l","l","d","l")
+
+trait.labs.m<- cbind(trait.labs, names(trait.labs), trait.cat)
 trait.labs.all<- rbind(trait.labs.all, trait.labs.m)
 
 #plot
@@ -218,13 +227,10 @@ plot.eplants= ggplot(eplants.l) + aes(x=value, y = LeadingEdge)+geom_point()+
 #scale and center
 eplants <- eplants %>%
   mutate(Dispersal = scale(Dispersal),
-         LifeSpan = scale(LifeSpan),
-         NoOfVegOffspings = scale(NoOfVegOffspings),
-         Persistence = scale(Persistence),
-         SeedReleaseHeight = scale(SeedReleaseHeight) )
+        Persistence = scale(Persistence) )
 
 #make factors
-eplants$LifeStrategy= factor(eplants$LifeStrategy, ordered=TRUE)
+#eplants$LifeStrategy= factor(eplants$LifeStrategy, ordered=TRUE)
 eplants$NutrientIndicator= factor(eplants$NutrientIndicator, ordered=TRUE)
 eplants$TemperatureIndicator= factor(eplants$TemperatureIndicator, ordered=TRUE)
 
@@ -237,7 +243,7 @@ eplants$TemperatureIndicator= factor(eplants$TemperatureIndicator, ordered=TRUE)
 
 #restrict traits
 lepbird= lepbird[,c("Species","Taxonomic.group","D_border_0.9",
-                    "temp.mean","temp.sd","precip.mean","precip.sd","wintering","body.size","num.gen","range.size")] #"precip.sd",
+                    "temp.mean","temp.sd","precip.mean","precip.sd","wintering","body.size","num.gen","range.size")] 
 
 #split moths and birds
 #moth= lepbird[lepbird$Taxonomic.group %in% c("Moth"),]
@@ -265,19 +271,21 @@ bird.l<- bird %>%
   gather("trait", "value", 4:ncol(bird))
 
 # Facet labels
-trait.labs <- c("Range Size","Wintering","Body size","Number Generations","T mean","T breadth","P mean","P breadth") 
+trait.labs <- c("Range size","Overwintering mode","Body size","Number generations","T mean (°C)","T breadth (°C)","P mean (mm)","P breadth (mm)") 
 names(trait.labs) <- c("range.size","wintering","body.size","num.gen","temp.mean","temp.sd","precip.mean","precip.sd")  
-trait.labs.m<- cbind(trait.labs, names(trait.labs))
+trait.cat<- c("e","l","l","l","c","c","c","c")
+
+trait.labs.m<- cbind(trait.labs, names(trait.labs), trait.cat)
 trait.labs.all<- rbind(trait.labs.all, trait.labs.m)
 
 #plot
 plot.lep= ggplot(lep.l) + aes(x=value, y = D_border_0.9)+geom_point()+
   facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Lepidopterans') +
-  theme_bw()+ylab(" shift (degree)") 
+  theme_bw()+ylab("Latitudinal shift (km)") 
 
 plot.bird= ggplot(bird.l) + aes(x=value, y = D_border_0.9)+geom_point()+
   facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Birds') +
-  theme_bw()+ylab(" shift (degree)") 
+  theme_bw()+ylab("Latitudinal shift (km)") 
 
 #set up ordered factors
 bird$num.gen= factor(bird$num.gen, ordered=TRUE)
@@ -447,12 +455,12 @@ if(dat.k==3){
 
 if(dat.k==4){
   rec_poly <- recipe(y ~ ., data = train) %>%
-    step_mutate(SeedReleaseHeight= poly(SeedReleaseHeight, degree=2)) %>%
-    step_mutate(LifeSpan= poly(LifeSpan, degree=2)) %>%
+    #step_mutate(SeedReleaseHeight= poly(SeedReleaseHeight, degree=2)) %>%
+    #step_mutate(LifeSpan= poly(LifeSpan, degree=2)) %>%
     step_mutate(Dispersal= poly(Dispersal, degree=2)) %>%
     step_mutate(Persistence= poly(Persistence, degree=2)) %>%
     #step_poly(Persistence, degree=1) %>% #SeedReleaseHeight,LifeSpan,Dispersal,Persistence
-    step_ordinalscore(TemperatureIndicator,NutrientIndicator,LifeStrategy)
+    step_ordinalscore(TemperatureIndicator,NutrientIndicator)
 }
 
 if(dat.k %in% c(5,6)){
@@ -568,7 +576,8 @@ rf_wf <-
 
 #cross validation 
 set.seed(1234)
-folds <- vfold_cv(na.omit(dat), v=7) #Or K=5 in N<20?
+if(dat.k==1) folds <- vfold_cv(na.omit(dat), v=5) #USe K=5 for small mammals dataset
+if(dat.k>1) folds <- vfold_cv(na.omit(dat), v=10) 
 
 #lm
 set.seed(456)
@@ -977,14 +986,14 @@ plot1a= ggplot(plants) + aes(x=earliest_seed_shed_mo, y = migration_m)+geom_poin
 
 # European plants: seed release height
 plot1b= ggplot(eplants) + aes(x=TemperatureIndicator, y = LeadingEdge)+geom_point()+
-  xlab("T indicator")+ylab("Elevation shift (m)")+ 
-  ggtitle('B. European plants')+
+  xlab("Temperature indicator")+ylab("Elevation shift (m)")+ 
+  ggtitle('B. Plants')+
   theme_bw(base_size=14)
 
 # Lep: temp breadth
 plot1c= ggplot(lep) + aes(x=temp.sd, y = D_border_0.9)+geom_point()+
-  xlab("T breadth")+ylab("Latitudinal shift (mile?)")+ 
-  ggtitle('C. Lepidoptera')+
+  xlab("T breadth (°C)")+ylab("Latitudinal shift (km)")+ 
+  ggtitle('C. Moths')+
   theme_bw(base_size=14)
 
 # Fish: depth range
@@ -996,14 +1005,14 @@ plot1d= ggplot(fish) + aes(x=DepthRangeDeep, y = Latitudinal.Difference)+geom_po
 
 # Bird: temp breadth
 plot1e= ggplot(bird) + aes(x=temp.sd, y = D_border_0.9)+geom_point()+
-  xlab("T breadth")+ylab("Latitudinal shift (mile?)")+ 
+  xlab("T breadth (°C)")+ylab("Latitudinal shift (km)")+ 
   ggtitle('E. Birds')+
   theme_bw(base_size=14)
 
 # Mammals: alt timit
 plot1f= ggplot(mammals) + aes(x=Orig_high_limit, y = High_change)+geom_point()+
   xlab("Altitudinal limit (m)")+ylab("Elevation shift (m)")+ 
-  ggtitle('F. Mammals')+
+  ggtitle('F. Small mammals')+
   theme_bw(base_size=14)
 
 #----
@@ -1162,7 +1171,7 @@ vi.dat.max$Model= factor(vi.dat.max$Model, levels=c("lm","lm poly", "rr", "rr po
 
 #update labels
 trait.labs.all= as.data.frame(trait.labs.all)
-names(trait.labs.all)= c("trait.labs","trait")
+names(trait.labs.all)= c("trait.labs","trait","category")
 
 #update names
 vi.dat.max$Variable[grep("Bio_mean", vi.dat.max$Variable)]="Bio1_mean"
@@ -1224,6 +1233,10 @@ pdf("Fig4_ViPlotsCV_sign.pdf",height = 8, width = 14)
 (vi.plots.sign[[2]] | vi.plots.sign[[4]] | vi.plots.sign[[5]])/
   (vi.plots.sign[[3]] | vi.plots.sign[[6]] | vi.plots.sign[[1]])
 dev.off()
+
+#color by trait group
+#a <- ifelse(data$category == 0, "red", "blue")
+# theme(axis.text.x = element_text(angle = 45, hjust = 1, colour = a))
 
 #===============================
 #prediction plots
