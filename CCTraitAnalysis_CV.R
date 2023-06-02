@@ -1123,7 +1123,7 @@ cv.plot1= cv.plot1 +
   theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+ ylab("")+xlab("")
 
 cv.plot2= ggplot(cv.dat[cv.dat$dataset %in% c("fish","birds","mammals"),]) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom_line()+
-  facet_grid(.metric~dataset, scales="free_y", labeller = labeller(dataset = dat.labs, .metric=met.labs, nrow=4), switch="y")+
+  facet_grid(.metric~dataset, scales="free_y", labeller = labeller(dataset = dat.labs, .metric=met.labs), switch="y")+
   theme_bw()
 cv.plot2= cv.plot2 + 
   geom_errorbar(data=cv.dat[cv.dat$dataset %in% c("fish","birds","mammals"),], aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")+
@@ -1131,10 +1131,17 @@ cv.plot2= cv.plot2 +
 
 #-----
 #plot average CV
-cv.dat.lm= cv.dat[cv.dat$Model=="LM",]
-cv.dat$mean.dif= cv.dat$MeanScale - cv.dat.lm[match(cv.dat$dataset, cv.dat.lm$dataset),"MeanScale"]
-cv.dat2= cv.dat[-which(cv.dat$Model=="LM"),]
-cv.dat2= cv.dat2[-which(cv.dat2$.metric=="rsq"),]
+cv.dat.rmse= cv.dat[cv.dat$Model=="LM" & cv.dat$.metric=="rmse",]
+cv.dat.rsq= cv.dat[cv.dat$Model=="LM" & cv.dat$.metric=="rsq",]
+
+cv.rmse= cv.dat[cv.dat$.metric=="rmse",]
+cv.rsq= cv.dat[cv.dat$.metric=="rsq",]
+
+cv.rmse$mean.dif= cv.rmse$MeanScale - cv.dat.rmse[match(cv.rmse$dataset, cv.dat.rmse$dataset),"MeanScale"]
+cv.rsq$mean.dif= cv.rsq$MeanScale - cv.dat.rsq[match(cv.rsq$dataset, cv.dat.rsq$dataset),"MeanScale"]
+
+cv.dat2= rbind(cv.rmse, cv.rsq)
+cv.dat2= cv.dat2[-which(cv.dat2$Model=="LM"),]
 cv.dat2$dat= dat.titles[match(cv.dat2$dataset, datasets)]
 cv.dat2$dat= factor(cv.dat2$dat, levels=c("alpine plants","plants","moths","fish","birds","small mammals"))
 
@@ -1142,18 +1149,24 @@ datasets= c("mammals", "plants","fish", "eplants", "lep", "birds")
 dat.titles= c("small mammals", "alpine plants","fish", "plants", "moths", "birds")
 
 #mean across models
-cv.dat.agg= aggregate(cv.dat2, by=list(cv.dat2$Model), FUN="mean")
-colnames(cv.dat.agg)[1]<- "Model"
-cv.dat.agg<- cv.dat.agg[,c(1,13)]
+cv.dat.agg= aggregate(cv.dat2, by=list(cv.dat2$Model, cv.dat2$.metric), FUN="mean")
+colnames(cv.dat.agg)[1:2]<- c("Model",".metric")
+cv.dat.agg<- cv.dat.agg[,c(1,2,14)]
+
+#order models
+cv.dat.agg$Model= factor(cv.dat.agg$Model, levels=c("LM","LM poly", "RR", "RR poly", "SVM linear", "SVM rbf", "RF"), ordered=TRUE)
 
 #plot
-cv.mean.plot=ggplot(cv.dat2) + aes(y=mean.dif, x = Model, color=dat)+geom_point(size=2)+geom_line(aes(group=dat))+
-  theme_bw()+ylab("delta RMSE from LM")
+cv.mean.plot=ggplot(cv.dat2) + aes(y=mean.dif, x = Model, color=dat)+
+  geom_hline(yintercept=0, color = "gray80", linewidth = 1)+
+  geom_point(size=2)+geom_line(aes(group=dat))+
+  facet_wrap(~.metric, ncol=1, labeller = labeller(dataset = dat.labs, .metric=met.labs), scales="free_y")+
+  theme_bw() +ylab("difference in metric from LM")
 
 cv.mean.plot= cv.mean.plot + 
   geom_point(data = cv.dat.agg, 
              mapping = aes(x = Model, y = mean.dif), color="black", size=4, shape=15)+ 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))+theme(legend.position="bottom")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+ theme(legend.position="bottom")+
   scale_color_discrete(name="")
 
 layout <- "
@@ -1166,7 +1179,7 @@ CCCCC##"
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
 pdf("Fig2_CvPlot.pdf",height = 8, width = 12)
-cv.plot1 + cv.mean.plot + cv.plot2 + plot_layout(design = layout)
+cv.plot1 + cv.mean.plot + cv.plot2 + plot_layout(design = layout) + plot_annotation(tag_levels = 'A')
 dev.off()
 
 #------------------
