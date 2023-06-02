@@ -10,9 +10,7 @@ library(ggcorrplot)
 library(tidymodels)
 library(vip)
 library(ISLR)
-
-#load custon vip_shap function to keep sign
-source("vi_shap_keepsign.R")
+library(e1071) #SVM models
 
 #----
 #read data
@@ -30,7 +28,7 @@ dat.titles= c("small mammals", "alpine plants","fish", "plants", "moths", "birds
 dat.labs<- c("F. Small mammals", "A. Alpine plants","D. Fish", "B. Plants", "C. Moths", "E. Birds")
 names(dat.labs)<- c("mammals", "plants","fish", "eplants", "lep", "birds")
 
-met.labs<- c("root mean squared error (RMSE)", "R-squared")
+met.labs<- c("RMSE", "R-squared")
 names(met.labs)<- c("rmse", "rsq")
 
 #----
@@ -814,6 +812,25 @@ rf_res <-
   workflow(y ~ ., rf_spec) %>%
   fit_resamples(folds, control = ctrl_imp)
 
+#estimate Shapley values for SVM
+#subject to numeric 
+train2= train[ , unlist(lapply(train, is.numeric))]  
+ 
+svm_model_lin <- svm(y ~ ., train2, kernel = "linear", scale=FALSE, cost=10)
+svm_model_rbf <- svm(y ~ . , train2, kernel = "radial", scale=FALSE, cost=10)
+
+set.seed(101) # for reproducibility
+shap_svm_lin <- explain(svm_model_lin, X = train2[,-ncol(train2)], nsim = 10,
+                pred_wrapper = predict)
+shap_svm_rbf <- explain(svm_model_rbf, X = train2[,-ncol(train2)], nsim = 10,
+                        pred_wrapper = predict)
+
+shap_svm_lin_mean= apply(shap_svm_lin, MARGIN=2, FUN=mean)
+shap_svm_lin_stdev= apply(shap_svm_lin, MARGIN=2, FUN=sd)
+
+shap_svm_rbf_mean= apply(shap_svm_rbf, MARGIN=2, FUN=mean)
+shap_svm_rbf_stdev= apply(shap_svm_rbf, MARGIN=2, FUN=sd)
+
 #Gather VI
 mods= c("LM","LM poly","RR","RR poly","RF")
 
@@ -847,28 +864,36 @@ mod.vi$Model<- mods[mod.k]
 if(mod.k==1) vi.mods= mod.vi 
 if(mod.k>1) vi.mods= rbind(vi.mods, mod.vi)
 
-#svm doesn't include signs 
+}  #end loop models
+
+#svm doesn't include signs; add shapely to include signs
 #add svm
-vi.svm1= as.data.frame(matrix(NA, nrow= nrow(svm_linear_vi),ncol=6))
+vi.svm1= as.data.frame(matrix(NA, nrow= nrow(svm_linear_vi),ncol=ncol(vi.mods)))
 names(vi.svm1)= names(vi.mods)
 vi.svm1$Variable= svm_linear_vi$Variable
 vi.svm1$Mean= abs(svm_linear_vi$Importance)
 vi.svm1$Variance= svm_linear_vi$StDev
-vi.svm1$Mean.sign= svm_linear_vi$Importance
-vi.svm1$Variance.sign= svm_linear_vi$StDev
 vi.svm1$Model<- "SVM linear"
+#add shapley
+match1= match(names(shap_svm_lin_mean), vi.svm1$Variable)
+vi.svm1$Mean.sign[na.omit(match1)]= shap_svm_lin_mean[!is.na(match1)]
+vi.svm1$Variance.sign[na.omit(match1)]= shap_svm_lin_stdev[!is.na(match1)]
+
 vi.mods= rbind(vi.mods, vi.svm1)
 
-vi.svm1= as.data.frame(matrix(NA, nrow= nrow(svm_rbf_vi),ncol=6))
+#RBF
+vi.svm1= as.data.frame(matrix(NA, nrow= nrow(svm_rbf_vi),ncol=ncol(vi.mods)))
 names(vi.svm1)= names(vi.mods)
 vi.svm1$Variable= svm_rbf_vi$Variable
 vi.svm1$Mean= abs(svm_rbf_vi$Importance)
 vi.svm1$Variance= svm_rbf_vi$StDev
-vi.svm1$Mean.sign= svm_rbf_vi$Importance
-vi.svm1$Variance.sign= svm_rbf_vi$StDev
 vi.svm1$Model<- "SVM rbf"
+#add shapley
+match1= match(names(shap_svm_rbf_mean), vi.svm1$Variable)
+vi.svm1$Mean.sign[na.omit(match1)]= shap_svm_rbf_mean[!is.na(match1)]
+vi.svm1$Variance.sign[na.omit(match1)]= shap_svm_rbf_stdev[!is.na(match1)]
+
 vi.mods= rbind(vi.mods, vi.svm1)
-}  #end loop models
 
 #------------
 #Combine across datasets
@@ -1090,12 +1115,18 @@ cv.dat$Model= factor(cv.dat$Model, levels=c("LM","LM poly", "RR", "RR poly", "SV
 cv.dat$dataset= factor(cv.dat$dataset, levels=c("plants","eplants", "lep", "fish", "birds", "mammals"), ordered=TRUE)
 
 #plot
-cv.plot= ggplot(cv.dat) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom_line()+
-  facet_grid(.metric~dataset, scales="free_y", labeller = labeller(dataset = dat.labs, .metric=met.labs), switch="y")+
+cv.plot1= ggplot(cv.dat[cv.dat$dataset %in% c("plants", "eplants","lep"),]) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom_line()+
+  facet_grid(.metric~dataset, scales="free_y", labeller = labeller(dataset = dat.labs, .metric=met.labs, nrow=4), switch="y")+
   theme_bw()
+cv.plot1= cv.plot1 + 
+  geom_errorbar(data=cv.dat[cv.dat$dataset %in% c("plants", "eplants","lep"),], aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")+
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+ ylab("")+xlab("")
 
-cv.plot= cv.plot + 
-  geom_errorbar(data=cv.dat, aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")+
+cv.plot2= ggplot(cv.dat[cv.dat$dataset %in% c("fish","birds","mammals"),]) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom_line()+
+  facet_grid(.metric~dataset, scales="free_y", labeller = labeller(dataset = dat.labs, .metric=met.labs, nrow=4), switch="y")+
+  theme_bw()
+cv.plot2= cv.plot2 + 
+  geom_errorbar(data=cv.dat[cv.dat$dataset %in% c("fish","birds","mammals"),], aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))+ ylab("")
 
 #-----
@@ -1122,11 +1153,20 @@ cv.mean.plot=ggplot(cv.dat2) + aes(y=mean.dif, x = Model, color=dat)+geom_point(
 cv.mean.plot= cv.mean.plot + 
   geom_point(data = cv.dat.agg, 
              mapping = aes(x = Model, y = mean.dif), color="black", size=4, shape=15)+ 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))+theme(legend.position="bottom")
-  
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+theme(legend.position="bottom")+
+  scale_color_discrete(name="")
+
+layout <- "
+AAAAABB
+AAAAABB
+AAAAABB
+AAAAABB
+CCCCCBB
+CCCCC##"
+
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
-pdf("Fig2_CvPlot.pdf",height = 6, width = 15)
-cv.plot + (cv.mean.plot  ) +  plot_layout(widths = c(4.5, 1)) #/ plot_spacer()
+pdf("Fig2_CvPlot.pdf",height = 8, width = 12)
+cv.plot1 + cv.mean.plot + cv.plot2 + plot_layout(design = layout)
 dev.off()
 
 #------------------
@@ -1138,7 +1178,7 @@ vi.dat2= as.data.frame(vi.dat)
 vi.max= vi.dat2 %>%
 group_by(dataset, Model) %>%
 summarize(max.mean=max(Mean),
-          max.mean.sign=max(Mean.sign))
+          max.mean.sign=max(abs(Mean.sign), na.rm=TRUE))
 vi.max= as.data.frame(vi.max)
 
 vi.dat2$dat_mod= paste(vi.dat$dataset, vi.dat$Model,sep="_")
@@ -1173,7 +1213,8 @@ vi.dat2$Variable[grep("LifeStrategy", vi.dat2$Variable, value = FALSE)]<- "LifeS
 #reduce to max
 vi.dat2$dat_mod_var= paste(vi.dat2$dat_mod, vi.dat2$Variable, sep="_")
 
-vi.dat.max= aggregate(vi.dat2, by=list(vi.dat2$dat_mod_var), FUN="max")
+vi.dat.max= aggregate(vi.dat2, by=list(vi.dat2$dat_mod_var), FUN=max, na.rm=TRUE, na.action=NULL)
+vi.dat.max[sapply(vi.dat.max, is.infinite)] <- NA
 
 #average importance across models
 vi.mean= vi.dat2 %>%
@@ -1235,7 +1276,7 @@ vi.dat.max$trait.lab[which(!is.na(match1))]<- trait.labs.all$trait.labs[match1[w
 vi.dat.max$trait.cat[which(!is.na(match1))]<- trait.labs.all$category[match1[which(!is.na(match1))]]
 
 #set color
-vi.dat.max$trait.color= c("darkgreen","cadetblue","blue","purple")[match(vi.dat.max$trait.cat, c("c","d","e","l") )]
+vi.dat.max$trait.color= c("cornflowerblue","darkorange","forestgreen","purple")[match(vi.dat.max$trait.cat, c("c","d","e","l") )]
 
 #---------------------
 #split by dataset and split
@@ -1246,10 +1287,16 @@ vi.plots.sign <- vector('list', length(datasets))
 
 pd <- position_dodge(0.4)
 
+#set up colors
+cols.mod= viridis(n=8,option="turbo")[c(1,3,5,6)]
+
 for(dat.k in 1:6){
   #reorder
   vi.dat.sub= vi.dat.max[vi.dat.max$dataset==datasets[dat.k],]
-  vi.dat.sub = vi.dat.sub[order(vi.dat.sub$trait.lab), ]
+  vi.dat.sub = vi.dat.sub[order(vi.dat.sub$MeanScale), ]
+  # lock in factor level order
+  vi.dat.sub$trait.lab <- factor(vi.dat.sub$trait.lab, levels = vi.dat.sub[which(vi.dat.sub$Model=="mean"),"trait.lab"])
+  cols= vi.dat.sub$trait.color[vi.dat.sub$Model=="mean"]
   
   vi.plot= ggplot(vi.dat.sub) + aes(y=MeanScale, x = trait.lab, color=Model, group=Model, lty=IsMeanImp)+
     geom_pointrange(aes(ymin = MeanScale-StdevScale, ymax = MeanScale+StdevScale), position=pd)+
@@ -1257,31 +1304,31 @@ for(dat.k in 1:6){
       geom_line(position=pd) +  #geom_jitter(width = 0.1, height = 0)
     #facet_grid(.~RF, scales="free")+
     ggtitle(dat.labs[dat.k])+theme_bw()+ylim(0,1)+
-    xlab("Variable")+ylab("Importance")+
+    xlab("Predictor")+ylab("Importance")+
     scale_color_viridis_d(option="turbo") + 
    # geom_errorbar(data=vi.dat2[vi.dat2$dataset==datasets[dat.k],], aes(y=MeanScale, x = Variable, ymin=MeanScale-StdevScale, ymax=MeanScale+StdevScale), width=0, position=position_dodge(width=0.5))+
-    guides(lty="none")+
-    theme(axis.text.y = element_text(colour= vi.dat.sub$trait.color[vi.dat.sub$Model=="LM"]))
+    guides(lty="none")
   
   if(dat.k>1) vi.plot=vi.plot + theme(legend.position = "none")
-  vi.plots[[dat.k]]= vi.plot+ coord_flip()
+  vi.plots[[dat.k]]= vi.plot+ coord_flip()+
+    theme(axis.text.y = element_text(colour= cols))
   
   #account for sign
   #drop polys for sign
-  vi.dat.sub= vi.dat.sub[which(vi.dat.sub$Model %in% c("LM","RR", "SVM linear", "SVM rbf", "RF")),]
+  vi.dat.sub= vi.dat.sub[which(vi.dat.sub$Model %in% c("LM","RR", "SVM linear", "SVM rbf")),]
   
   vi.plot= ggplot(vi.dat.sub) + aes(y=MeanScale.sign, x = trait.lab, color=Model, group=Model, lty=IsMeanImp)+
     geom_pointrange(aes(ymin = MeanScale.sign-StdevScale.sign, ymax = MeanScale.sign+StdevScale.sign), position=pd)+
     geom_line(position=pd) +  #geom_jitter(width = 0.1, height = 0)
     ggtitle(dat.labs[dat.k])+theme_bw()+
-    xlab("Variable")+ylab("Importance")+
-    scale_color_viridis_d(option="turbo") + 
+    xlab("Predictor")+ylab("Effect")+
+    scale_color_discrete(type=cols.mod) + 
     guides(lty="none")+
-    geom_hline(yintercept = 0, color="gray",lwd=1)+
-    theme(axis.text.y = element_text(colour= vi.dat.sub$trait.color[vi.dat.sub$Model=="LM"]))
+    geom_hline(yintercept = 0, color="gray",lwd=1)
   
   if(dat.k>1) vi.plot=vi.plot + theme(legend.position = "none")
-  vi.plots.sign[[dat.k]]= vi.plot+ coord_flip()
+  vi.plots.sign[[dat.k]]= vi.plot+ coord_flip()+
+    theme(axis.text.y = element_text(colour= cols))+ylim(-1.2,1.2)
 }
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
