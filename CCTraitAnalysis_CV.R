@@ -74,7 +74,7 @@ trait.labs.all<- cbind(trait.labs.m, names(trait.labs.m), trait.cat)
 #plot
 plot.mammal= ggplot(mammals.l) + aes(x=value, y = High_change)+geom_point()+
   facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.m)) + 
-  ggtitle('Mammals')+
+  ggtitle('F. Small mammals')+
   theme_bw()+ylab("Elevation shift (m)") #+stat_smooth(method='lm', formula= y~poly(x,2))
 #+geom_smooth(se=FALSE) #+scale_x_log10()
 
@@ -127,7 +127,7 @@ trait.labs.all<- rbind(trait.labs.all, trait.labs.t)
 
 #plot  
 plot.aplants= ggplot(plants.l) + aes(x=value, y = migration_m)+geom_point()+
-  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.ap)) +ggtitle('Alpine plants') +
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.ap)) +ggtitle('A. Alpine plants') +
   theme_bw()+ylab("Elevation shift (m)") #+ stat_smooth(method='lm', formula= y~poly(x,2))
 #+scale_x_log10()
 
@@ -167,7 +167,7 @@ fish.l<- fish %>%
   gather("trait", "value", 3:ncol(fish))
 
 # Facet labels
-trait.labs.f <- c("Habitat","log Depth range (m)","log Length (cm)","Vulnerability","Water Type")
+trait.labs.f <- c("Habitat","log Depth range (m)","log Length (cm)","Vulnerability index","Water Type")
 names(trait.labs.f) <- c("habitat","DepthRangeDeep","Length","Vulnerability","WaterType")
 trait.cat<- c("e","e","l","e","e")
 
@@ -176,7 +176,7 @@ trait.labs.all<- rbind(trait.labs.all, trait.labs.t)
 
 #plot
 plot.fish= ggplot(fish.l) + aes(x=value, y = Latitudinal.Difference)+geom_point()+
-  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.f)) +ggtitle('Triennial marine survey') +
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.f)) +ggtitle('D. Fish') +
   theme_bw()+ylab("Latitudinal shift (°)") #+stat_smooth(method='lm', formula= y~poly(x,2))
 
 #scale and center
@@ -216,7 +216,7 @@ eplants.l<- eplants %>%
   gather("trait", "value", 3:ncol(eplants))
 
 # Facet labels
-trait.labs.p <- c("Temperature indicator","Nutrient indicator","Dispersal","Persistence")
+trait.labs.p <- c("Temperature indicator","Nutrient indicator","Dispersal index","Persistence index")
 names(trait.labs.p) <- c("TemperatureIndicator","NutrientIndicator","Dispersal","Persistence")
 trait.cat<- c("c","e","d","l")
 
@@ -225,7 +225,7 @@ trait.labs.all<- rbind(trait.labs.all, trait.labs.t)
 
 #plot
 plot.eplants= ggplot(eplants.l) + aes(x=value, y = LeadingEdge)+geom_point()+
-  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.p)) +ggtitle('European plants') +
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.p)) +ggtitle('B. Plants') +
   theme_bw()+ylab("Elevational shift (m)") #+stat_smooth(method='lm', formula= y~poly(x,2))
 #check LeadingEdge, Optimum, RearEdge
 
@@ -240,7 +240,7 @@ eplants$NutrientIndicator= factor(eplants$NutrientIndicator, ordered=TRUE)
 eplants$TemperatureIndicator= factor(eplants$TemperatureIndicator, ordered=TRUE)
 
 #----
-#Add lepidoptera and birds
+#Lepidoptera and birds
 # https://academic.oup.com/evlett/advance-article/doi/10.1093/evlett/qrad004/7076361
 # Moth: move further N with bigger temp mean and and narrower breath
 # Bird: move further N with narrowed temp breadth and resident wintering
@@ -276,7 +276,7 @@ bird.l<- bird %>%
   gather("trait", "value", 4:ncol(bird))
 
 # Facet labels
-trait.labs.l <- c("Range size","Overwintering mode","Body size","Number generations","T mean (°C)","T breadth (°C)","P mean (mm)","P breadth (mm)") 
+trait.labs.l <- c("Range size (grid cells)","Overwintering mode","Body size (mm or g)","Number generations","T mean (°C)","T breadth (°C)","P mean (mm)","P breadth (mm)") 
 names(trait.labs.l) <- c("range.size","wintering","body.size","num.gen","temp.mean","temp.sd","precip.mean","precip.sd")  
 trait.cat<- c("e","l","l","l","c","c","c","c")
 
@@ -285,11 +285,11 @@ trait.labs.all<- rbind(trait.labs.all, trait.labs.t)
 
 #plot
 plot.lep= ggplot(lep.l) + aes(x=value, y = D_border_0.9)+geom_point()+
-  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.l)) +ggtitle('Lepidopterans') +
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.l)) +ggtitle('C. Moths') +
   theme_bw()+ylab("Latitudinal shift (km)") 
 
 plot.bird= ggplot(bird.l) + aes(x=value, y = D_border_0.9)+geom_point()+
-  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('Birds') +
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('E. Birds') +
   theme_bw()+ylab("Latitudinal shift (km)") 
 
 #set up ordered factors
@@ -423,11 +423,6 @@ lm_fit <-
 #tidy(lm_fit)
 
 #OLS Poly
-#rec_poly <- recipe(y ~ ., data = train) %>%
-#  step_center(all_numeric_predictors())%>%
-#  step_normalize(all_numeric_predictors())%>%
-#   step_poly(mget(preds.poly), degree = 2)
-#######need to generalize
 
 if(dat.k==1){
   rec_poly <- recipe(y ~ ., data = train) %>%
@@ -608,6 +603,7 @@ lm_res %>%
     y = "Predicted shift",
     color = NULL
   )
+
 #---------------------
 # lm poly
 
@@ -798,14 +794,6 @@ svm_rbf_fit <- workflow() %>%
    vi(method = "permute", 
       target = "y", metric = "rsquared",
       pred_wrapper = kernlab::predict, train = train, nsim=7)
-
- #MODIFY TO KEEP SIGN
- # svm_rbf_vi<-
- #      svm_rbf_fit %>%
- #      pull_workflow_fit() %>%
- #      vi(method = "shap", 
- #         feature_names= trait.labs.svm,
- #         pred_wrapper = kernlab::predict, train = train, nsim=20)
 
 #RF
 rf_res <-
@@ -1301,7 +1289,7 @@ vi.plots.sign <- vector('list', length(datasets))
 pd <- position_dodge(0.4)
 
 #set up colors
-cols.mod= viridis(n=8,option="turbo")[c(1,3,5,6)]
+cols.mod= viridis(n=8,option="turbo")
 
 for(dat.k in 1:6){
   #reorder
@@ -1335,7 +1323,7 @@ for(dat.k in 1:6){
     geom_line(position=pd) +  #geom_jitter(width = 0.1, height = 0)
     ggtitle(dat.labs[dat.k])+theme_bw()+
     xlab("Predictor")+ylab("Effect")+
-    scale_color_discrete(type=cols.mod) + 
+    scale_color_discrete(type=cols.mod[c(1,3,5,6)]) + 
     guides(lty="none")+
     geom_hline(yintercept = 0, color="gray",lwd=1)
   
@@ -1369,11 +1357,14 @@ pred.all= pred.all[which(pred.all$dataset %in% c("eplants","lep")),]
 #order models by complexity
 pred.all$model= factor(pred.all$model, levels=c("LM","LM poly", "RR", "RR poly", "SVM linear", "SVM rbf", "RF"), ordered=TRUE)
 
+dat.labs2<- c("Plants", "Moths")
+names(dat.labs2)<- c("eplants", "lep")
+
 pred.plot= ggplot(pred.all) + aes(y=.pred, x = truth, color=model)+
   geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
   geom_point(alpha = 0.7) +
-  facet_grid(datasub~dataset, labeller = labeller(dataset = dat.labs))+
-  scale_color_viridis_d(option="turbo") +
+  facet_grid(datasub~dataset, labeller = labeller(dataset = dat.labs2))+
+  scale_color_discrete(type=cols.mod[-length(cols.mod)])+
   labs(
     x = "Observed shift",
     y = "Predicted shift",
