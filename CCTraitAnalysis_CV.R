@@ -15,13 +15,13 @@ library(iml) #Interpretable Machine Learning
 
 #----
 #read data
-mammals= read.csv("mammals01.csv")
-plants= read.csv("plants5.csv")
-fish= read.csv("west-coast-triennial _species_generaltraits.csv")
-lepbird= read.csv("Data_Shifts_NicheMetrics_Traits.csv")
+mammals= read.csv("./data/mammals_Angertetal2011.csv")
+plants= read.csv("./data/plants_Angertetal2011.csv")
+lepbird= read.csv("./data/MothsBirds_Hallfors2023.csv")
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/data")
-eplants= read.csv("rumpf_ShiftsTraitsBuckley_20180418.csv")
+eplants= read.csv("eplants_Rumpfetal2018.csv")
+fish= read.csv("fish_Pinskyetal2013.csv")
 
 datasets= c("mammals", "plants","fish", "eplants", "lep", "birds")
 dat.titles= c("small mammals", "alpine plants","fish", "plants", "moths", "birds")
