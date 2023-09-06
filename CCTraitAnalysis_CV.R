@@ -11,16 +11,17 @@ library(tidymodels)
 library(vip)
 library(ISLR)
 library(e1071) #SVM models
+library(iml) #Interpretable Machine Learning
 
 #----
 #read data
-setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/data")
-
 mammals= read.csv("mammals01.csv")
 plants= read.csv("plants5.csv")
 fish= read.csv("west-coast-triennial _species_generaltraits.csv")
-eplants= read.csv("rumpf_ShiftsTraitsBuckley_20180418.csv")
 lepbird= read.csv("Data_Shifts_NicheMetrics_Traits.csv")
+
+setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/data")
+eplants= read.csv("rumpf_ShiftsTraitsBuckley_20180418.csv")
 
 datasets= c("mammals", "plants","fish", "eplants", "lep", "birds")
 dat.titles= c("small mammals", "alpine plants","fish", "plants", "moths", "birds")
@@ -289,7 +290,7 @@ plot.lep= ggplot(lep.l) + aes(x=value, y = D_border_0.9)+geom_point()+
   theme_bw()+ylab("Latitudinal shift (km)") 
 
 plot.bird= ggplot(bird.l) + aes(x=value, y = D_border_0.9)+geom_point()+
-  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs)) +ggtitle('E. Birds') +
+  facet_wrap(~trait, scales="free", labeller = labeller(trait = trait.labs.l)) +ggtitle('E. Birds') +
   theme_bw()+ylab("Latitudinal shift (km)") 
 
 #set up ordered factors
@@ -801,6 +802,7 @@ rf_res <-
   fit_resamples(folds, control = ctrl_imp)
 
 #estimate Shapley values for SVM
+#https://bgreenwell.github.io/fastshap/articles/fastshap.html
 #subject to numeric 
 train2= train[ , unlist(lapply(train, is.numeric))]  
  
@@ -808,10 +810,11 @@ svm_model_lin <- svm(y ~ ., train2, kernel = "linear", scale=FALSE, cost=10)
 svm_model_rbf <- svm(y ~ . , train2, kernel = "radial", scale=FALSE, cost=10)
 
 set.seed(101) # for reproducibility
-shap_svm_lin <- explain(svm_model_lin, X = train2[,-ncol(train2)], nsim = 10,
-                pred_wrapper = predict)
-shap_svm_rbf <- explain(svm_model_rbf, X = train2[,-ncol(train2)], nsim = 10,
-                        pred_wrapper = predict)
+shap_svm_lin <- fastshap::explain(svm_model_lin, X = train2[,-ncol(train2)], nsim = 10,
+                 pred_wrapper = predict)
+shap_svm_rbf <- fastshap::explain(svm_model_rbf, X = train2[,-ncol(train2)], nsim = 10,
+                         pred_wrapper = predict)
+
 
 shap_svm_lin_mean= apply(shap_svm_lin, MARGIN=2, FUN=mean)
 shap_svm_lin_stdev= apply(shap_svm_lin, MARGIN=2, FUN=sd)
@@ -831,7 +834,7 @@ if(mod.k==4) mod_res<- glmn_poly_res
 if(mod.k==5) mod_res<- rf_res
 
 mod.vi= mod_res %>%
-  select(id, .extracts) %>%
+  dplyr::select(id, .extracts) %>%
   unnest(.extracts) %>%
   unnest(.extracts) 
 
@@ -865,7 +868,7 @@ vi.svm1$Model<- "SVM linear"
 #add shapley
 match1= match(names(shap_svm_lin_mean), vi.svm1$Variable)
 vi.svm1$Mean.sign[na.omit(match1)]= shap_svm_lin_mean[!is.na(match1)]
-vi.svm1$Variance.sign[na.omit(match1)]= shap_svm_lin_stdev[!is.na(match1)]
+#vi.svm1$Variance.sign[na.omit(match1)]= shap_svm_lin_stdev[!is.na(match1)]
 
 vi.mods= rbind(vi.mods, vi.svm1)
 
@@ -879,7 +882,7 @@ vi.svm1$Model<- "SVM rbf"
 #add shapley
 match1= match(names(shap_svm_rbf_mean), vi.svm1$Variable)
 vi.svm1$Mean.sign[na.omit(match1)]= shap_svm_rbf_mean[!is.na(match1)]
-vi.svm1$Variance.sign[na.omit(match1)]= shap_svm_rbf_stdev[!is.na(match1)]
+#vi.svm1$Variance.sign[na.omit(match1)]= shap_svm_rbf_stdev[!is.na(match1)]
 
 vi.mods= rbind(vi.mods, vi.svm1)
 
@@ -1299,7 +1302,7 @@ for(dat.k in 1:6){
   vi.dat.sub$trait.lab <- factor(vi.dat.sub$trait.lab, levels = vi.dat.sub[which(vi.dat.sub$Model=="mean"),"trait.lab"])
   cols= vi.dat.sub$trait.color[vi.dat.sub$Model=="mean"]
   
-  vi.plot= ggplot(vi.dat.sub) + aes(y=MeanScale, x = trait.lab, color=Model, group=Model, lty=IsMeanImp)+
+  vi.plot= ggplot(vi.dat.sub) + aes(y=MeanScale, x = trait.lab, color=Model, group=Model, lty=IsMeanImp, alpha=IsMeanImp,linewidth=IsMeanImp)+
     geom_pointrange(aes(ymin = MeanScale-StdevScale, ymax = MeanScale+StdevScale), position=pd)+
     #geom_point(position=position_dodge(width=0.5))+
       geom_line(position=pd) +  #geom_jitter(width = 0.1, height = 0)
@@ -1307,8 +1310,10 @@ for(dat.k in 1:6){
     ggtitle(dat.labs[dat.k])+theme_bw()+ylim(0,1)+
     xlab("Predictor")+ylab("Importance")+
     scale_color_viridis_d(option="turbo") + 
+    scale_alpha_discrete(range = c(0.5, 1))+
+    scale_linewidth_manual(values = c(N = 0.5, Y=1))+
    # geom_errorbar(data=vi.dat2[vi.dat2$dataset==datasets[dat.k],], aes(y=MeanScale, x = Variable, ymin=MeanScale-StdevScale, ymax=MeanScale+StdevScale), width=0, position=position_dodge(width=0.5))+
-    guides(lty="none")
+    guides(lty="none", alpha="none", linewidth="none")
   
   if(dat.k>1) vi.plot=vi.plot + theme(legend.position = "none")
   vi.plots[[dat.k]]= vi.plot+ coord_flip()+
