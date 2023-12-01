@@ -1106,18 +1106,18 @@ cv.dat$Model= factor(cv.dat$Model, levels=c("LM","LM poly", "RR", "RR poly", "SV
 cv.dat$dataset= factor(cv.dat$dataset, levels=c("plants","eplants", "lep", "fish", "birds", "mammals"), ordered=TRUE)
 
 #plot
-cv.plot1= ggplot(cv.dat[cv.dat$dataset %in% c("plants", "eplants","lep"),]) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom_line()+
-  facet_grid(.metric~dataset, scales="free_y", labeller = labeller(dataset = dat.labs, .metric=met.labs, nrow=4), switch="y")+
+cv.plot1= ggplot(cv.dat) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom_line()+
+  facet_grid_paginate(.metric~dataset, ncol = 3, nrow = 2, page = 1, scales="free_y", labeller = labeller(dataset = dat.labs, .metric=met.labs, nrow=4), switch="y")+
   theme_bw()
 cv.plot1= cv.plot1 + 
-  geom_errorbar(data=cv.dat[cv.dat$dataset %in% c("plants", "eplants","lep"),], aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")+
+  geom_errorbar(data=cv.dat, aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")+
   theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+ ylab("")+xlab("")
 
-cv.plot2= ggplot(cv.dat[cv.dat$dataset %in% c("fish","birds","mammals"),]) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom_line()+
-  facet_grid(.metric~dataset, scales="free_y", labeller = labeller(dataset = dat.labs, .metric=met.labs), switch="y")+
+cv.plot2= ggplot(cv.dat) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom_line()+
+  facet_grid_paginate(.metric~dataset, ncol = 3, nrow = 2, page = 2, scales="free_y", labeller = labeller(dataset = dat.labs, .metric=met.labs, nrow=4), switch="y")+
   theme_bw()
 cv.plot2= cv.plot2 + 
-  geom_errorbar(data=cv.dat[cv.dat$dataset %in% c("fish","birds","mammals"),], aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")+
+  geom_errorbar(data=cv.dat, aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))+ ylab("")
 
 #-----
@@ -1142,7 +1142,7 @@ dat.titles= c("small mammals", "alpine plants","fish", "plants", "moths", "birds
 #mean across models
 cv.dat.agg= aggregate(cv.dat2, by=list(cv.dat2$Model, cv.dat2$.metric), FUN="mean")
 colnames(cv.dat.agg)[1:2]<- c("Model",".metric")
-cv.dat.agg<- cv.dat.agg[,c(1,2,14)]
+cv.dat.agg<- cv.dat.agg[,c(1,2,14:16)]
 
 #order models
 cv.dat.agg$Model= factor(cv.dat.agg$Model, levels=c("LM","LM poly", "RR", "RR poly", "SVM linear", "SVM rbf", "RF"), ordered=TRUE)
@@ -1153,12 +1153,13 @@ cv.mean.plot=ggplot(cv.dat2) + aes(y=mean.dif, x = Model, color=dat)+
   geom_point(size=2)+geom_line(aes(group=dat))+
   facet_wrap(~.metric, ncol=1, labeller = labeller(dataset = dat.labs, .metric=met.labs), scales="free_y")+
   theme_bw() +ylab("difference in metric from LM")
+  
 
 cv.mean.plot= cv.mean.plot + 
   geom_point(data = cv.dat.agg, 
              mapping = aes(x = Model, y = mean.dif), color="black", size=4, shape=15)+ 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))+ theme(legend.position="bottom")+
-  scale_color_discrete(name="")
+  scale_color_viridis_d(name="")
 
 layout <- "
 AAAAABB
@@ -1170,7 +1171,7 @@ CCCCC##"
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
 pdf("Fig2_CvPlot.pdf",height = 8, width = 12)
-cv.plot1 + cv.mean.plot + cv.plot2 + plot_layout(design = layout) + plot_annotation(tag_levels = 'A')
+cv.plot1 + cv.mean.plot + cv.plot2 + plot_layout(design = layout) + plot_annotation(tag_levels = c('A'))
 dev.off()
 
 #------------------
@@ -1357,18 +1358,24 @@ pred.all= rbind(pred.test, pred.train)
 pred.all$datasub= factor(pred.all$datasub, levels=c("train","test"), ordered=TRUE)
 
 #subset to plants and lep
-pred.all= pred.all[which(pred.all$dataset %in% c("eplants","lep")),]
+pred.all.h= pred.all[which(pred.all$dataset %in% c("birds","eplants","lep")),]
+pred.all.v= pred.all[which(pred.all$dataset %in% c("fish","plants")),] #,"mammals"
+
+#dat.labs2<- c("Plants", "Moths")
+#names(dat.labs2)<- c("eplants", "lep")
+dat.labs.h= dat.labs[c(4:6)]
+dat.labs.v= dat.labs[c(1,2:3)]
 
 #order models by complexity
 pred.all$model= factor(pred.all$model, levels=c("LM","LM poly", "RR", "RR poly", "SVM linear", "SVM rbf", "RF"), ordered=TRUE)
+pred.all.h$model= factor(pred.all.h$model, levels=c("LM","LM poly", "RR", "RR poly", "SVM linear", "SVM rbf", "RF"), ordered=TRUE)
+pred.all.v$model= factor(pred.all.v$model, levels=c("LM","LM poly", "RR", "RR poly", "SVM linear", "SVM rbf", "RF"), ordered=TRUE)
 
-dat.labs2<- c("Plants", "Moths")
-names(dat.labs2)<- c("eplants", "lep")
-
-pred.plot= ggplot(pred.all) + aes(y=.pred, x = truth, color=model)+
+#horizontal range shifts
+pred.plot.h= ggplot(pred.all.h) + aes(y=.pred, x = truth, color=model)+
   geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
   geom_point(alpha = 0.7) +
-  facet_grid(datasub~dataset, labeller = labeller(dataset = dat.labs2))+
+  facet_grid(datasub~dataset, labeller = labeller(dataset = dat.labs.h))+
   scale_color_discrete(type=cols.mod[-length(cols.mod)])+
   labs(
     x = "Observed shift",
@@ -1376,10 +1383,73 @@ pred.plot= ggplot(pred.all) + aes(y=.pred, x = truth, color=model)+
     color = "Model"
   )+ theme_bw()
 
+#elevation shifts
+pred.plot.v= ggplot(pred.all.v) + aes(y=.pred, x = truth, color=model)+
+  geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
+  geom_point(alpha = 0.7) +
+  facet_grid(datasub~dataset, scales="free_y", labeller = labeller(dataset = dat.labs.v))+
+  scale_color_discrete(type=cols.mod[-length(cols.mod)])+
+  labs(
+    x = "Observed shift",
+    y = "Predicted shift",
+    color = "Model"
+  )+ theme_bw()
+
+#----------
+
+#plot
+cv.plot1= ggplot(cv.dat) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom_line()+
+  
+#scale to maximum
+#scale to max value
+pred.all2= as.data.frame(pred.all)
+
+#order datasets
+pred.all2$dataset= factor(pred.all2$dataset, levels=c("plants","eplants", "lep", "fish", "birds", "mammals"), ordered=TRUE)
+
+pred.max= pred.all2 %>%
+  group_by(dataset) %>%
+  summarize(max.pred=max(.pred),
+            max.truth=max(truth),
+            max= max(.pred,truth))
+pred.max= as.data.frame(pred.max)
+
+match1= match(pred.all2$dataset, pred.max$dataset)
+pred.all2$pred.scale= pred.all2$.pred/pred.max$max[match1]
+pred.all2$truth.scale= pred.all2$truth/pred.max$max[match1]
+
+#plot
+pred.plot.1= ggplot(pred.all2) + aes(y=pred.scale, x = truth.scale, color=model)+
+  geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
+  geom_point(alpha = 0.7) +
+  facet_grid_paginate(datasub~dataset, ncol = 3, nrow = 2, page = 1, labeller = labeller(dataset = dat.labs, .metric=met.labs, nrow=4), switch="y")+
+  scale_color_discrete(type=cols.mod[-length(cols.mod)])+
+  labs(
+    x = "Scaled observed shift",
+    y = "Scaled predicted shift",
+    color = "Model"
+  )+ theme_bw() + theme(legend.position="none")
+
+pred.plot.2= ggplot(pred.all2) + aes(y=pred.scale, x = truth.scale, color=model)+
+  geom_abline(lty = 2, color = "gray80", linewidth = 1.5) +
+  geom_point(alpha = 0.7) +
+  facet_grid_paginate(datasub~dataset, ncol = 3, nrow = 2, page = 2, labeller = labeller(dataset = dat.labs, .metric=met.labs, nrow=4), switch="y")+
+  scale_color_discrete(type=cols.mod[-length(cols.mod)])+
+  labs(
+    x = "Scaled observed shift",
+    y = "Scaled predicted shift",
+    color = "Model"
+  )+ theme_bw() + theme(legend.position="bottom")
+
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
-pdf("Fig5_ PredPlot.pdf",height = 8, width = 10)
-pred.plot
+pdf("Fig5_ PredPlot_all.pdf",height = 10, width = 8)
+pred.plot.1 / pred.plot.2
 dev.off()
 
 #===============================
+# Partial plots
+
+#library(pdp) # for partial, plotPartial, and grid.arrange functions
+#partial(rf_fit, pred.var = "range.size", plot = TRUE, train=train) 
+
 
