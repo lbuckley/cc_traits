@@ -18,10 +18,10 @@ library(iml) #Interpretable Machine Learning
 mammals= read.csv("./data/mammals_Angertetal2011.csv")
 plants= read.csv("./data/plants_Angertetal2011.csv")
 lepbird= read.csv("./data/MothsBirds_Hallfors2023.csv")
+fish= read.csv("./data/fish_Pinskyetal2013.csv")
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/data")
 eplants= read.csv("eplants_Rumpfetal2018.csv")
-fish= read.csv("fish_Pinskyetal2013.csv")
 
 datasets= c("mammals", "plants","fish", "eplants", "lep", "birds")
 dat.titles= c("small mammals", "alpine plants","fish", "plants", "moths", "birds")
