@@ -1,0 +1,77 @@
+﻿Species,Latitudinal Difference,Latitudinal Std,FamCode,GenCode,Fresh,Brack,Saltwater,DemersPelag,DepthRangeDeep,Vulnerability,Length,LTypeMaxM,UsedforAquaculture,Electrogenic
+Allosmerus elongatus,-0.018377549,2.115310538,80,8446,0,0,-1,demersal,103,31.88,22.9,TL,never/rarely,no special ability
+Alosa sapidissima,2.327595366,1.572071131,43,4924,-1,-1,-1,pelagic-neritic,250,50.69,76,TL,never/rarely,no special ability
+Anoplopoma fimbria,0.102598897,1.800811518,270,3471,0,0,-1,bathydemersal,2740,55.72,120,TL,likely future use,no special ability
+Apristurus brunneus,4.353113508,1.970849248,10,8966,0,0,-1,demersal,1306,52.37,69,TL,never/rarely,Electrosensing only
+Atheresthes stomias,0.056714222,0.229545801,440,5992,0,0,-1,demersal,950,63.58,84,TL,never/rarely,no special ability
+Careproctus melanurus,-0.705782821,1.29080444,615,1321,0,0,-1,bathydemersal,2286,31.06,54,TL,never/rarely,no special ability
+Chilara taylori,0.855503106,2.137042155,186,8048,0,-1,-1,demersal,280,32.43,40.4,TL,never/rarely,no special ability
+Citharichthys sordidus,1.450380952,0.732131641,514,3248,0,0,-1,demersal,549,34.93,41,TL,never/rarely,no special ability
+Cryptacanthodes giganteus,1.295614501,1.8760892,394,5460,0,0,-1,demersal,128,60.48,117,TL,never/rarely,no special ability
+Engraulis mordax,-7.798518486,3.378279378,454,498,0,0,-1,pelagic-neritic,310,29.58,24.8,SL,never/rarely,no special ability
+Eopsetta jordani,-2.432457998,0.860739358,440,1364,0,0,-1,demersal,550,55.16,53,TL,never/rarely,no special ability
+Gadus macrocephalus,0.206377355,0.319677449,183,3348,0,-1,-1,demersal,1280,50.18,119,TL,never/rarely,no special ability
+Galeorhinus galeus,8.090205963,4.13152213,488,2272,0,0,-1,benthopelagic,1100,73.97,193,TL,never/rarely,Electrosensing only
+Genyonemus lineatus,0.500207254,0.266887165,331,7639,0,0,-1,benthopelagic,183,22.94,41,TL,never/rarely,no special ability
+Glyptocephalus zachirus,-0.449516926,0.625787606,440,891,0,0,-1,demersal,900,64.5,60,TL,never/rarely,no special ability
+Hexagrammos decagrammus,0.126072103,1.330234887,271,10062,0,0,-1,demersal,46,48.43,61,TL,never/rarely,no special ability
+Hexanchus griseus,0,3.324921039,5,5258,0,0,-1,bathydemersal,2500,84,482,TL,never/rarely,electrosensing only
+Hippoglossoides elassodon,1.226272074,0.424346314,440,3497,0,0,-1,demersal,1050,69.58,52,SL,never/rarely,no special ability
+Hippoglossus stenolepis,1.719654765,0.786804034,440,6785,0,0,-1,demersal,1200,86.03,258,TL,never/rarely,no special ability
+Hydrolagus colliei,-1.007532922,0.988065426,25,7490,0,0,-1,demersal,913,49.66,100,TL,never/rarely,electrosensing only
+Icelinus filamentosus,0.018432515,0.713381209,277,5810,0,0,-1,demersal,800,48.43,27,TL,never/rarely,no special ability
+Isopsetta isolepis,4.981983838,3.49276022,440,3304,0,0,-1,demersal,425,34.87,55,TL,never/rarely,no special ability
+Leptocottus armatus,-2.050016688,3.005552737,277,2028,0,-1,-1,demersal,156,23.93,46,TL,never/rarely,no special ability
+Lycodes cortezianus,-0.224381817,1.021241476,188,6115,0,0,-1,bathydemersal,620,54.74,50,TL,never/rarely,no special ability
+Lycodes diapterus,0.265347029,0.638004867,188,6115,0,0,-1,bathydemersal,844,42.24,33,TL,never/rarely,no special ability
+Lycodes pacificus,0.488428758,1.404319355,188,6115,0,0,-1,bathydemersal,399,46.61,46,TL,never/rarely,no special ability
+Lyopsetta exilis,0.360740612,0.794766054,440,626,0,0,-1,bathydemersal,800,46.95,35,TL,never/rarely,no special ability
+Merluccius productus,2.311982306,1.44409248,184,1339,0,-1,-1,pelagic-neritic,1000,59.9,91,TL,never/rarely,no special ability
+Microgadus proximus,-2.40642689,2.248942147,183,9967,0,-1,-1,demersal,275,31.47,30.5,SL,never/rarely,no special ability
+Microstomus pacificus,0.192567667,0.833182851,440,842,0,0,-1,demersal,1370,71.29,76,TL,never/rarely,no special ability
+Oncorhynchus kisutch,1.991564533,3.290781207,76,2445,-1,-1,-1,demersal,250,53.09,107.95,TL,commercial,no special ability
+Oncorhynchus tshawytscha,-4.833089754,1.754138554,76,2445,-1,-1,-1,benthopelagic,375,68.24,150,TL,commercial,no special ability
+Ophiodon elongatus,-1.146682007,0.547215163,271,1915,0,0,-1,demersal,475,63.47,152,TL,never/rarely,no special ability
+Parophrys vetulus,2.366370761,0.945537239,440,561,0,0,-1,demersal,550,43.49,49,TL,never/rarely,no special ability
+Platichthys stellatus,-4.956392979,2.093676554,440,559,-1,-1,-1,demersal,375,50.55,91,TL,never/rarely,no special ability
+Pleuronichthys decurrens,2.376287684,2.155097721,440,7259,0,0,-1,demersal,533,41.8,37,TL,never/rarely,no special ability
+Porichthys notatus,1.052274767,1.488048794,189,5331,0,0,-1,demersal,366,46.98,38,TL,never/rarely,no special ability
+Psettichthys melanostictus,-5.985650182,3.20239888,440,560,0,0,-1,demersal,325,37.41,63,TL,never/rarely,no special ability
+Raja binoculata,-3.813012746,1.016855248,19,11053,0,0,-1,demersal,800,85.38,244,TL,never/rarely,weakly discharging
+Raja inornata,-6.718117669,2.120032179,19,1309,0,0,-1,demersal,1600,51.9,76,TL,never/rarely,weakly discharging
+Raja rhina,0.265668993,0.650908792,19,1309,0,0,-1,bathydemersal,1069,78.39,180,TL,never/rarely,weakly discharging
+Sebastes alutus,-2.779492149,1.033766577,573,2902,0,0,-1,bathydemersal,825,55.47,53,TL,never/rarely,no special ability
+Sebastes auriculatus,-0.653357536,0.42149783,573,2902,0,0,-1,demersal,128,58.03,56,TL,never/rarely,no special ability
+Sebastes aurora,2.619947861,2.344972619,573,2902,0,0,-1,bathydemersal,769,55.5,41,TL,never/rarely,no special ability
+Sebastes babcocki,-3.175584163,1.085914328,573,2902,0,0,-1,demersal,625,54.23,64,TL,never/rarely,no special ability
+Sebastes brevispinis,-0.167296959,1.282209446,573,2902,0,0,-1,demersal,375,67.89,71,TL,never/rarely,no special ability
+Sebastes caurinus,0,1.401404493,573,2902,0,0,-1,demersal,183,58.06,58,TL,never/rarely,no special ability
+Sebastes chlorostictus,-3.042149224,1.849046231,573,2902,0,0,-1,demersal,201,61.36,50,TL,never/rarely,no special ability
+Sebastes crameri,0.006891998,0.965924321,573,2902,0,0,-1,bathydemersal,600,69.33,58,TL,never/rarely,no special ability
+Sebastes diploproa,-1.401345486,1.408445265,573,2902,0,0,-1,bathydemersal,800,65.67,46,TL,never/rarely,no special ability
+Sebastes elongatus,0.544275591,0.807828785,573,2902,0,0,-1,demersal,425,63.41,39,TL,never/rarely,no special ability
+Sebastes entomelas,-4.114861074,1.986471961,573,2902,0,0,-1,pelagic-neritic,549,64.5,60,TL,never/rarely,no special ability
+Sebastes flavidus,0.558572482,1.353138797,573,2902,0,0,-1,reef-associated,549,56.18,66,TL,never/rarely,no special ability
+Sebastes goodei,0.130755208,0.517078871,573,2902,0,-1,-1,demersal,425,51.9,56,TL,never/rarely,no special ability
+Sebastes helvomaculatus,1.02558491,1.224382243,573,2902,0,0,-1,demersal,549,66.04,41,TL,never/rarely,no special ability
+Sebastes jordani,2.813964476,1.964857114,573,2902,0,0,-1,demersal,350,43.13,32,TL,never/rarely,no special ability
+Sebastes levis,0.579813332,1.240877366,573,2902,0,0,-1,bathydemersal,500,69.59,100,FL,never/rarely,no special ability
+Sebastes maliger,-0.987166187,0.564126799,573,2902,0,0,-1,demersal,274,64.3,61,TL,never/rarely,no special ability
+Sebastes melanostomus,-1.007720292,1.22453087,573,2902,0,0,-1,bathydemersal,769,70.41,61,TL,never/rarely,no special ability
+Sebastes paucispinis,-3.97038089,2.560408902,573,2902,0,0,-1,reef-associated,476,62.81,91,TL,never/rarely,no special ability
+Sebastes pinniger,1.816879082,1.136524132,573,2902,0,0,-1,demersal,838,62.13,76,FL,never/rarely,no special ability
+Sebastes proriger,-1.962370446,1.221874712,573,2902,0,0,-1,bathydemersal,425,57.66,61,TL,never/rarely,no special ability
+Sebastes reedi,-3.578850651,2.155571025,573,2902,0,0,-1,bathydemersal,375,62.99,58,TL,never/rarely,no special ability
+Sebastes ruberrimus,-4.6002241,1.683711314,573,2902,0,0,-1,reef-associated,549,73.46,104,TL,never/rarely,no special ability
+Sebastes rufus,-0.05509471,1.623206536,573,2902,0,0,-1,demersal,247,67.89,54,TL,never/rarely,no special ability
+Sebastes saxicola,0.585696009,0.560438052,573,2902,0,0,-1,demersal,547,65.32,38,TL,never/rarely,no special ability
+Sebastes wilsoni,-1.074519187,1.650479017,573,2902,0,0,-1,demersal,274,52.27,23,TL,never/rarely,no special ability
+Sebastes zacentrus,-2.336881909,1.65913531,573,2902,0,0,-1,bathydemersal,476,49.83,39,TL,never/rarely,no special ability
+Sebastolobus alascanus,0.015060389,0.264151213,573,4859,0,0,-1,demersal,1600,69.71,80,SL,never/rarely,no special ability
+Squalus acanthias,-0.099995961,1.357261094,13,128,0,-1,-1,benthopelagic,1460,67.94,160,TL,never/rarely,electrosensing only
+Thaleichthys pacificus,0.414383682,1.079056885,80,7428,-1,-1,-1,pelagic-neritic,300,32.71,34,TL,never/rarely,no special ability
+Torpedo californica,-5.391636506,2.322404781,18,2691,0,0,-1,demersal,906,78.86,140,TL,never/rarely,strongly discharging
+Trachurus symmetricus,1.106759149,2.455342119,314,3831,0,0,-1,pelagic-oceanic,400,29.99,81,TL,never/rarely,no special ability
+Xeneretmus latifrons,1.175761902,0.695844422,283,4254,0,0,-1,bathydemersal,400,26.66,19,TL,never/rarely,no special ability
+Zalembius rosaceus,0.358300255,0.303137123,348,9561,0,0,-1,demersal,229,30.85,20,TL,never/rarely,no special ability
+Zaniolepis latipinnis,-1.054924963,0.570826644,271,176,0,0,-1,demersal,201,27.48,30,TL,never/rarely,no special ability
