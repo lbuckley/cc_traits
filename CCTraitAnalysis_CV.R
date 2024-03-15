@@ -12,6 +12,7 @@ library(vip)
 library(ISLR)
 library(e1071) #SVM models
 library(iml) #Interpretable Machine Learning
+library(ggforce)
 
 #----
 #read data
@@ -66,7 +67,7 @@ mammals.l<- mammals %>%
 ## Facet labels
 #trait.labs <- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","log Range size (km2)","log Mass (g)","Daily rhythm","Annual rhythm","Diet breadth","Temp mean","Temp breadth")
 #names(trait.labs) <- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DailyRhythm","AnnualRhythm","DietBreadth","Bio1_mean","Bio1_std")
-trait.labs.m<- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","log Range size (km2)","log Mass (g)","Diet breadth","T mean (°C)","T breadth (°C)")
+trait.labs.m<- c("Altitudinal limit (m)","Longevity (yrs)","Litters per yr","Litter size","log Range size (km2)","log Mass (g)","Diet breadth","Tmean (°C)","Tbreadth (°C)")
 names(trait.labs.m)<- c("Orig_high_limit","Longevity_yrs","Litters_per_yr","Litter_size","Rangesize_km2","Mass_g","DietBreadth","Bio1_mean","Bio1_std")
 trait.cat<- c("c","l","l","l","e","l","e","c","c")
 #store
@@ -118,7 +119,7 @@ plants.l<- plants %>%
 plants.l$value= as.numeric(plants.l$value)
 
 ## Facet labels
-trait.labs.ap <- c("Earliest seed shed (mo)","Seed shed duration (mo)","N latitude (°)", "T mean (°C)", "T breadth (°C)")
+trait.labs.ap <- c("Earliest seed shed (mo)","Seed shed duration (mo)","N latitude (°)", "Tmean (°C)", "Tbreadth (°C)")
 names(trait.labs.ap) <- c("earliest_seed_shed_mo","seed_shed_dur_mos",
                        "Nbound_lat_GBIF_nosyn", "Bio1_mean_nosyn", "Bio1_std_nosyn")
 trait.cat<- c("d","d","c", "c", "c")
@@ -277,7 +278,7 @@ bird.l<- bird %>%
   gather("trait", "value", 4:ncol(bird))
 
 # Facet labels
-trait.labs.l <- c("Range size (grid cells)","Overwintering mode","Body size (mm or g)","Number generations","T mean (°C)","T breadth (°C)","P mean (mm)","P breadth (mm)") 
+trait.labs.l <- c("Range size (grid cells)","Overwintering mode","Body size (mm or g)","Number generations","Tmean (°C)","Tbreadth (°C)","Pmean (mm)","Pbreadth (mm)") 
 names(trait.labs.l) <- c("range.size","wintering","body.size","num.gen","temp.mean","temp.sd","precip.mean","precip.sd")  
 trait.cat<- c("e","l","l","l","c","c","c","c")
 
@@ -1118,7 +1119,7 @@ cv.plot2= ggplot(cv.dat) + aes(y=MeanScale, x = Model)+geom_point(size=2)+ #geom
   theme_bw()
 cv.plot2= cv.plot2 + 
   geom_errorbar(data=cv.dat, aes(x=Model, y=MeanScale, ymin=MeanScale-SterrScale, ymax=MeanScale+SterrScale), width=0, col="black")+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))+ ylab("")
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+ ylab("")+ xlab("")
 
 #-----
 #plot average CV
@@ -1142,7 +1143,7 @@ dat.titles= c("small mammals", "alpine plants","fish", "plants", "moths", "birds
 #mean across models
 cv.dat.agg= aggregate(cv.dat2, by=list(cv.dat2$Model, cv.dat2$.metric), FUN="mean")
 colnames(cv.dat.agg)[1:2]<- c("Model",".metric")
-cv.dat.agg<- cv.dat.agg[,c(1,2,14:16)]
+cv.dat.agg<- cv.dat.agg[,c(1,2,12:15)]
 
 #order models
 cv.dat.agg$Model= factor(cv.dat.agg$Model, levels=c("LM","LM poly", "RR", "RR poly", "SVM linear", "SVM rbf", "RF"), ordered=TRUE)
@@ -1151,10 +1152,9 @@ cv.dat.agg$Model= factor(cv.dat.agg$Model, levels=c("LM","LM poly", "RR", "RR po
 cv.mean.plot=ggplot(cv.dat2) + aes(y=mean.dif, x = Model, color=dat)+
   geom_hline(yintercept=0, color = "gray80", linewidth = 1)+
   geom_point(size=2)+geom_line(aes(group=dat))+
-  facet_wrap(~.metric, ncol=1, labeller = labeller(dataset = dat.labs, .metric=met.labs), scales="free_y")+
+  facet_wrap(~.metric, ncol=2, labeller = labeller(dataset = dat.labs, .metric=met.labs), scales="free_y")+
   theme_bw() +ylab("difference in metric from LM")
   
-
 cv.mean.plot= cv.mean.plot + 
   geom_point(data = cv.dat.agg, 
              mapping = aes(x = Model, y = mean.dif), color="black", size=4, shape=15)+ 
@@ -1170,9 +1170,11 @@ CCCCCBB
 CCCCC##"
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
-pdf("Fig2_CvPlot.pdf",height = 8, width = 12)
-cv.plot1 + cv.mean.plot + cv.plot2 + plot_layout(design = layout) + plot_annotation(tag_levels = c('A'))
+pdf("Fig2_CvPlot.pdf",height = 11, width = 8)
+cv.plot1 + cv.plot2 + cv.mean.plot +plot_layout(heights = c(2, 2, 1))+ plot_annotation(tag_levels = c('A'))
 dev.off()
+
+#+ plot_layout(design = layout) 
 
 #------------------
 #VI plots with cross validation
@@ -1283,6 +1285,8 @@ vi.dat.max$trait.cat[which(!is.na(match1))]<- trait.labs.all$category[match1[whi
 #set color
 vi.dat.max$trait.color= c("cornflowerblue","darkorange","forestgreen","purple")[match(vi.dat.max$trait.cat, c("c","d","e","l") )]
 
+#change predictor names
+
 #---------------------
 #split by dataset and split
 library(patchwork)
@@ -1339,14 +1343,16 @@ for(dat.k in 1:6){
 }
 
 setwd("/Volumes/GoogleDrive/My Drive/Buckley/Work/StudentsPostdocs/Cannistra/Traits/figures/")
-pdf("Fig3_ViPlotsCV.pdf",height = 8, width = 14)
-(vi.plots[[2]] | vi.plots[[4]] | vi.plots[[5]])/
-  (vi.plots[[3]] | vi.plots[[6]] | vi.plots[[1]])
+pdf("Fig3_ViPlotsCV.pdf",height = 11, width = 8)
+(vi.plots[[2]] | vi.plots[[4]])/ 
+  (vi.plots[[5]] | vi.plots[[3]])/ 
+  (vi.plots[[6]] | vi.plots[[1]])+plot_layout(guides = "collect") & theme(legend.position = 'bottom')
 dev.off()
 
-pdf("Fig4_ViPlotsCV_sign.pdf",height = 8, width = 14)
-(vi.plots.sign[[2]] | vi.plots.sign[[4]] | vi.plots.sign[[5]])/
-  (vi.plots.sign[[3]] | vi.plots.sign[[6]] | vi.plots.sign[[1]])
+pdf("Fig4_ViPlotsCV_sign.pdf",height = 11, width = 8)
+(vi.plots.sign[[2]] | vi.plots.sign[[4]])/ 
+  (vi.plots.sign[[5]] | vi.plots.sign[[3]])/ 
+  (vi.plots.sign[[6]] | vi.plots.sign[[1]]) +plot_layout(guides = "collect") & theme(legend.position = 'bottom')
 dev.off()
 
 #===============================
